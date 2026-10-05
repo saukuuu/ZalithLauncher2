@@ -120,77 +120,24 @@ private sealed interface VersionState {
 }
 
 /**
- * 版本过滤条件
- * @param release 是否保留正式版本
- * @param snapshot 是否保留快照版本
- * @param old 是否保留旧版本
- * @param id 搜索并过滤版本ID
+ * Host information for the Minecraft version selection screen.
  */
-private data class VersionFilter(
-    val release: Boolean = true,
-    val snapshot: Boolean = false,
-    val aprilFools: Boolean = false,
-    val old: Boolean = false,
-    val id: String = ""
-)
+sealed interface SelectGameVersionHost {
+    data class Download(
+        val mainScreenKey: TitledNavKey?,
+        val downloadScreenKey: TitledNavKey?,
+        val downloadGameScreenKey: TitledNavKey?
+    ) : SelectGameVersionHost
 
-private class VersionsViewModel: ViewModel() {
-    var versionState by mutableStateOf<VersionState>(VersionState.Loading)
-        private set
-
-    //简易版本类型过滤器
-    var versionFilter by mutableStateOf(VersionFilter())
-        private set
-
-    fun filterWith(filter: VersionFilter) {
-        versionFilter = filter
-        viewModelScope.launch {
-            val allVersions = MinecraftVersions.allVersions.value
-            versionState = VersionState.None(
-                versions = allVersions.filterVersions(versionFilter)
-            )
-        }
-    }
-
-    fun refresh(forceReload: Boolean = false) {
-        viewModelScope.launch {
-            versionState = VersionState.Loading
-            versionState = runCatching {
-                MinecraftVersions.refreshVersions(forceReload)
-                val allVersions = MinecraftVersions.allVersions.value
-                VersionState.None(allVersions.filterVersions(versionFilter))
-            }.getOrElse { e ->
-                Logger.warning(TAG, "Failed to get version manifest!", e)
-                val message: AndroidStringText = when(e) {
-                    is HttpRequestTimeoutException -> androidText(R.string.error_timeout)
-                    is UnknownHostException, is UnresolvedAddressException -> androidText(R.string.error_network_unreachable)
-                    is ConnectException -> androidText(R.string.error_connection_failed)
-                    is ResponseException -> e.toLocal()
-                    else -> {
-                        Logger.error(TAG, "An unknown exception was caught!", e)
-                        androidText(e.localizedMessage ?: e.message ?: e::class.qualifiedName ?: "Unknown error")
-                    }
-                }
-                VersionState.Failure(message)
-            }
-        }
-    }
-
-    init {
-        //初始化后，刷新版本列表
-        refresh()
-    }
-
-    override fun onCleared() {
-        viewModelScope.cancel()
-    }
+    data class VersionSettings(
+        val mainScreenKey: TitledNavKey?,
+        val versionSettingsScreenKey: TitledNavKey?
+    ) : SelectGameVersionHost
 }
 
 @Composable
 fun SelectGameVersionScreen(
-    mainScreenKey: TitledNavKey?,
-    downloadScreenKey: TitledNavKey?,
-    downloadGameScreenKey: TitledNavKey?,
+    host: SelectGameVersionHost,
     eventViewModel: EventViewModel,
     onVersionSelect: (String) -> Unit = {}
 ) {
@@ -200,79 +147,110 @@ fun SelectGameVersionScreen(
         VersionsViewModel()
     }
 
-    BaseScreen(
-        levels1 = listOf(
-            Pair(NestedNavKey.Download::class.java, mainScreenKey),
-            Pair(NestedNavKey.DownloadGame::class.java, downloadScreenKey)
-        ),
-        Triple(NormalNavKey.DownloadGame.SelectGameVersion, downloadGameScreenKey, false)
-    ) { isVisible ->
-        val yOffset by swapAnimateDpAsState(
-            targetValue = (-40).dp,
-            swapIn = isVisible
-        )
+    when (host) {
+        is SelectGameVersionHost.Download -> BaseScreen(
+            levels1 = listOf(
+                Pair(NestedNavKey.Download::class.java, host.mainScreenKey),
+                Pair(NestedNavKey.DownloadGame::class.java, host.downloadScreenKey)
+            ),
+            Triple(NormalNavKey.DownloadGame.SelectGameVersion, host.downloadGameScreenKey, false)
+        ) { isVisible ->
+            SelectGameVersionContent(
+                isVisible = isVisible,
+                viewModel = viewModel,
+                eventViewModel = eventViewModel,
+                onVersionSelect = onVersionSelect
+            )
+        }
 
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .offset { IntOffset(x = 0, y = yOffset.roundToPx()) }
-        ) {
-            when (val state = viewModel.versionState) {
-                is VersionState.Loading -> {
-                    Box(
-                        Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        LinearWavyProgressIndicator(
-                            modifier = Modifier.width(168.dp),
-                            wavelength = 32.dp
-                        )
-                    }
+        is SelectGameVersionHost.VersionSettings -> BaseScreen(
+            levels1 = listOf(
+                Pair(NestedNavKey.VersionSettings::class.java, host.mainScreenKey)
+            ),
+            Triple(NormalNavKey.Versions.ModifyVersion, host.versionSettingsScreenKey, false)
+        ) { isVisible ->
+            SelectGameVersionContent(
+                isVisible = isVisible,
+                viewModel = viewModel,
+                eventViewModel = eventViewModel,
+                onVersionSelect = onVersionSelect
+            )
+        }
+    }
+}
+
+@Composable
+private fun SelectGameVersionContent(
+    isVisible: Boolean,
+    viewModel: VersionsViewModel,
+    eventViewModel: EventViewModel,
+    onVersionSelect: (String) -> Unit
+) {
+    val yOffset by swapAnimateDpAsState(
+        targetValue = (-40).dp,
+        swapIn = isVisible
+    )
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .offset { IntOffset(x = 0, y = yOffset.roundToPx()) }
+    ) {
+        when (val state = viewModel.versionState) {
+            is VersionState.Loading -> {
+                Box(
+                    Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    LinearWavyProgressIndicator(
+                        modifier = Modifier.width(168.dp),
+                        wavelength = 32.dp
+                    )
                 }
+            }
 
-                is VersionState.Failure -> {
-                    Box(Modifier.fillMaxSize()) {
-                        ScalingLabel(
-                            modifier = Modifier.align(Alignment.Center),
-                            text = {
-                                AndroidStringText(
-                                    text = androidText(
-                                        R.string.download_game_failed_to_get_versions,
-                                        state.message
-                                    )
+            is VersionState.Failure -> {
+                Box(Modifier.fillMaxSize()) {
+                    ScalingLabel(
+                        modifier = Modifier.align(Alignment.Center),
+                        text = {
+                            AndroidStringText(
+                                text = androidText(
+                                    R.string.download_game_failed_to_get_versions,
+                                    state.message
                                 )
-                            },
-                            onClick = {
-                                viewModel.refresh(true)
-                            }
-                        )
-                    }
+                            )
+                        },
+                        onClick = {
+                            viewModel.refresh(true)
+                        }
+                    )
                 }
+            }
 
-                is VersionState.None -> {
-                    Column {
-                        VersionHeader(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 12.dp),
-                            versionFilter = viewModel.versionFilter,
-                            onVersionFilterChange = { viewModel.filterWith(it) },
-                            itemContainerColor = cardColor(),
-                            itemContentColor = onCardColor(),
-                            onRefreshClick = {
-                                viewModel.refresh(true)
-                            }
-                        )
+            is VersionState.None -> {
+                Column {
+                    VersionHeader(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp),
+                        versionFilter = viewModel.versionFilter,
+                        onVersionFilterChange = { viewModel.filterWith(it) },
+                        itemContainerColor = cardColor(),
+                        itemContentColor = onCardColor(),
+                        onRefreshClick = {
+                            viewModel.refresh(true)
+                        }
+                    )
 
-                        VersionList(
-                            modifier = Modifier.weight(1f),
-                            versions = state.versions,
-                            onVersionSelect = onVersionSelect,
-                            openLink = { url ->
-                                eventViewModel.sendEvent(EventViewModel.Event.OpenLink(url))
-                            }
-                        )
-                    }
+                    VersionList(
+                        modifier = Modifier.weight(1f),
+                        versions = state.versions,
+                        onVersionSelect = onVersionSelect,
+                        openLink = { url ->
+                            eventViewModel.sendEvent(EventViewModel.Event.OpenLink(url))
+                        }
+                    )
                 }
             }
         }
