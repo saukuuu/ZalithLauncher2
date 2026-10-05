@@ -3,10 +3,6 @@ name: Build APK
 on:
   workflow_dispatch:
   workflow_call:
-    inputs:
-      variant:
-        required: true
-        type: string
     secrets:
       KEY_PASSWORD:
         required: false
@@ -52,26 +48,9 @@ jobs:
       - name: Build APK for ${{ matrix.arch }}
         run: |
           chmod +x gradlew
-          ./gradlew ZalithLauncher:assemble${{ inputs.variant }} -Darch=${{ matrix.arch }}
-
-      - name: Upload Release APK for ${{ matrix.arch }}
-        if: inputs.variant == 'Release'
-        continue-on-error: true
-        uses: actions/upload-artifact@v7
-        with:
-          name: release apk (${{ matrix.arch }})
-          path: ZalithLauncher/build/outputs/apk/release/*.apk
-
-      - name: Upload Release Mapping for ${{ matrix.arch }}
-        if: inputs.variant == 'Release'
-        continue-on-error: true
-        uses: actions/upload-artifact@v7
-        with:
-          name: mapping (${{ matrix.arch }})
-          path: ZalithLauncher/build/outputs/mapping/release/mapping.txt
+          ./gradlew ZalithLauncher:assembleDebug -Darch=${{ matrix.arch }}
 
       - name: Upload Debug APK for ${{ matrix.arch }}
-        if: inputs.variant == 'Debug'
         continue-on-error: true
         uses: actions/upload-artifact@v7
         with:
