@@ -186,27 +186,11 @@ private class VersionsViewModel: ViewModel() {
     }
 }
 
-/**
- * 选择 Minecraft 版本屏幕的宿主信息，提供可见性判定所需的导航层级
- */
-sealed interface SelectGameVersionHost {
-    /** 下载游戏流程 */
-    data class Download(
-        val mainScreenKey: TitledNavKey?,
-        val downloadScreenKey: TitledNavKey?,
-        val downloadGameScreenKey: TitledNavKey?
-    ) : SelectGameVersionHost
-
-    /** 版本设置流程（修改版本） */
-    data class VersionSettings(
-        val mainScreenKey: TitledNavKey?,
-        val versionSettingsScreenKey: TitledNavKey?
-    ) : SelectGameVersionHost
-}
-
 @Composable
 fun SelectGameVersionScreen(
-    host: SelectGameVersionHost,
+    mainScreenKey: TitledNavKey?,
+    downloadScreenKey: TitledNavKey?,
+    downloadGameScreenKey: TitledNavKey?,
     eventViewModel: EventViewModel,
     onVersionSelect: (String) -> Unit = {}
 ) {
@@ -216,110 +200,79 @@ fun SelectGameVersionScreen(
         VersionsViewModel()
     }
 
-    when (host) {
-        is SelectGameVersionHost.Download -> BaseScreen(
-            levels1 = listOf(
-                Pair(NestedNavKey.Download::class.java, host.mainScreenKey),
-                Pair(NestedNavKey.DownloadGame::class.java, host.downloadScreenKey)
-            ),
-            Triple(NormalNavKey.DownloadGame.SelectGameVersion, host.downloadGameScreenKey, false)
-        ) { isVisible ->
-            SelectGameVersionContent(
-                isVisible = isVisible,
-                viewModel = viewModel,
-                eventViewModel = eventViewModel,
-                onVersionSelect = onVersionSelect
-            )
-        }
+    BaseScreen(
+        levels1 = listOf(
+            Pair(NestedNavKey.Download::class.java, mainScreenKey),
+            Pair(NestedNavKey.DownloadGame::class.java, downloadScreenKey)
+        ),
+        Triple(NormalNavKey.DownloadGame.SelectGameVersion, downloadGameScreenKey, false)
+    ) { isVisible ->
+        val yOffset by swapAnimateDpAsState(
+            targetValue = (-40).dp,
+            swapIn = isVisible
+        )
 
-        is SelectGameVersionHost.VersionSettings -> BaseScreen(
-            levels1 = listOf(
-                Pair(NestedNavKey.VersionSettings::class.java, host.mainScreenKey)
-            ),
-            Triple(NormalNavKey.Versions.ModifyVersion, host.versionSettingsScreenKey, false)
-        ) { isVisible ->
-            SelectGameVersionContent(
-                isVisible = isVisible,
-                viewModel = viewModel,
-                eventViewModel = eventViewModel,
-                onVersionSelect = onVersionSelect
-            )
-        }
-    }
-}
-
-@Composable
-private fun SelectGameVersionContent(
-    isVisible: Boolean,
-    viewModel: VersionsViewModel,
-    eventViewModel: EventViewModel,
-    onVersionSelect: (String) -> Unit
-) {
-    val yOffset by swapAnimateDpAsState(
-        targetValue = (-40).dp,
-        swapIn = isVisible
-    )
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .offset { IntOffset(x = 0, y = yOffset.roundToPx()) }
-    ) {
-        when (val state = viewModel.versionState) {
-            is VersionState.Loading -> {
-                Box(
-                    Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    LinearWavyProgressIndicator(
-                        modifier = Modifier.width(168.dp),
-                        wavelength = 32.dp
-                    )
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .offset { IntOffset(x = 0, y = yOffset.roundToPx()) }
+        ) {
+            when (val state = viewModel.versionState) {
+                is VersionState.Loading -> {
+                    Box(
+                        Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        LinearWavyProgressIndicator(
+                            modifier = Modifier.width(168.dp),
+                            wavelength = 32.dp
+                        )
+                    }
                 }
-            }
 
-            is VersionState.Failure -> {
-                Box(Modifier.fillMaxSize()) {
-                    ScalingLabel(
-                        modifier = Modifier.align(Alignment.Center),
-                        text = {
-                            AndroidStringText(
-                                text = androidText(
-                                    R.string.download_game_failed_to_get_versions,
-                                    state.message
+                is VersionState.Failure -> {
+                    Box(Modifier.fillMaxSize()) {
+                        ScalingLabel(
+                            modifier = Modifier.align(Alignment.Center),
+                            text = {
+                                AndroidStringText(
+                                    text = androidText(
+                                        R.string.download_game_failed_to_get_versions,
+                                        state.message
+                                    )
                                 )
-                            )
-                        },
-                        onClick = {
-                            viewModel.refresh(true)
-                        }
-                    )
+                            },
+                            onClick = {
+                                viewModel.refresh(true)
+                            }
+                        )
+                    }
                 }
-            }
 
-            is VersionState.None -> {
-                Column {
-                    VersionHeader(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp),
-                        versionFilter = viewModel.versionFilter,
-                        onVersionFilterChange = { viewModel.filterWith(it) },
-                        itemContainerColor = cardColor(),
-                        itemContentColor = onCardColor(),
-                        onRefreshClick = {
-                            viewModel.refresh(true)
-                        }
-                    )
+                is VersionState.None -> {
+                    Column {
+                        VersionHeader(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp),
+                            versionFilter = viewModel.versionFilter,
+                            onVersionFilterChange = { viewModel.filterWith(it) },
+                            itemContainerColor = cardColor(),
+                            itemContentColor = onCardColor(),
+                            onRefreshClick = {
+                                viewModel.refresh(true)
+                            }
+                        )
 
-                    VersionList(
-                        modifier = Modifier.weight(1f),
-                        versions = state.versions,
-                        onVersionSelect = onVersionSelect,
-                        openLink = { url ->
-                            eventViewModel.sendEvent(EventViewModel.Event.OpenLink(url))
-                        }
-                    )
+                        VersionList(
+                            modifier = Modifier.weight(1f),
+                            versions = state.versions,
+                            onVersionSelect = onVersionSelect,
+                            openLink = { url ->
+                                eventViewModel.sendEvent(EventViewModel.Event.OpenLink(url))
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -467,6 +420,16 @@ private fun VersionList(
     openLink: (url: String) -> Unit
 ) {
     val scrollState = rememberLazyListState()
+    val groupedVersions = remember(versions) {
+        versions.groupBy { version ->
+            if (version.type == MinecraftVersion.Type.Release) {
+                releaseFamily(version.version.id)
+            } else {
+                version.version.id
+            }
+        }.toList()
+    }
+
     LazyColumn(
         modifier = modifier.nonInteractiveScrollbar(
             state = scrollState.scrollIndicatorState!!,
@@ -475,110 +438,151 @@ private fun VersionList(
         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
         state = scrollState,
     ) {
-        items(versions) { version ->
-            VersionItemLayout(
+        items(groupedVersions) { (family, familyVersions) ->
+            VersionFamilyCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 6.dp),
-                version = version,
-                onClick = {
-                    onVersionSelect(version.version.id)
-                },
-                onAccessWiki = { wikiUrl ->
-                    openLink(wikiUrl)
-                },
+                family = family,
+                versions = familyVersions,
+                onVersionSelect = onVersionSelect,
+                openLink = openLink
             )
         }
     }
 }
 
+/** Turns 1.17.1 into 1.17, so patch releases share one Minecraft update card. */
+private fun releaseFamily(versionId: String): String {
+    val parts = versionId.split('.')
+    return if (parts.size >= 2 && parts[0].all(Char::isDigit) && parts[1].all(Char::isDigit)) {
+        "${parts[0]}.${parts[1]}"
+    } else versionId
+}
+
 @Composable
-private fun VersionItemLayout(
+private fun VersionFamilyCard(
     modifier: Modifier = Modifier,
-    version: MinecraftVersion,
-    onClick: () -> Unit = {},
-    onAccessWiki: (String) -> Unit = {},
-    shape: Shape = MaterialTheme.shapes.large,
+    family: String,
+    versions: List<MinecraftVersion>,
+    onVersionSelect: (String) -> Unit,
+    openLink: (String) -> Unit,
+    shape: Shape = MaterialTheme.shapes.extraLarge,
     influencedByBackground: Boolean = true,
     color: Color = cardColor(influencedByBackground),
     contentColor: Color = onCardColor(),
     blur: Int = AllSettings.backgroundBlur.state,
 ) {
+    val newest = versions.maxByOrNull { it.version.releaseTime } ?: return
     val scale = remember { Animatable(initialValue = 0.95f) }
     LaunchedEffect(Unit) {
         scale.animateTo(targetValue = 1f, animationSpec = getAnimateTween())
     }
 
-    val (icon, versionType, wikiUrl, summary) = getVersionComponents(version)
+    val (icon, versionType, wikiUrl, summary) = getVersionComponents(newest)
 
     Surface(
         modifier = modifier.graphicsLayer(scaleY = scale.value, scaleX = scale.value),
-        onClick = onClick,
         shape = shape,
         color = color,
         contentColor = contentColor
     ) {
-        Row(
+        Column(
             modifier = Modifier
-                .clip(shape = shape)
+                .clip(shape)
                 .backgroundGlass(blur, color, influencedByBackground)
-                .padding(all = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            icon?.let { versionIcon ->
-                Image(
-                    modifier = Modifier.size(32.dp),
-                    painter = versionIcon,
-                    contentDescription = null
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-            }
-
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                // Placeholder for the update artwork. The project currently only ships generic
+                // Minecraft artwork; themed update images can replace this drawable per family.
+                icon?.let { versionIcon ->
+                    Surface(
+                        modifier = Modifier.size(72.dp),
+                        shape = MaterialTheme.shapes.large,
+                        color = MaterialTheme.colorScheme.surfaceVariant
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Image(
+                                modifier = Modifier.size(48.dp),
+                                painter = versionIcon,
+                                contentDescription = null
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(14.dp))
+                }
+
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(
-                        text = version.version.id,
-                        style = MaterialTheme.typography.labelLarge
+                        text = if (newest.type == MinecraftVersion.Type.Release) "Minecraft $family" else newest.version.id,
+                        style = MaterialTheme.typography.titleMedium
                     )
-
-                    LittleTextLabel(
-                        text = versionType
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        LittleTextLabel(text = versionType)
+                        Text(
+                            modifier = Modifier.alpha(0.7f),
+                            text = formatDate(
+                                input = newest.version.releaseTime,
+                                pattern = stringResource(R.string.date_format)
+                            ),
+                            style = MaterialTheme.typography.labelMedium
+                        )
+                    }
+                    summary?.let {
+                        Text(
+                            modifier = Modifier.alpha(0.7f),
+                            text = it,
+                            style = MaterialTheme.typography.labelMedium
+                        )
+                    }
                 }
 
-                summary?.let { text ->
-                    Text(
-                        modifier = Modifier.alpha(0.7f),
-                        text = text,
-                        style = MaterialTheme.typography.labelMedium
-                    )
+                wikiUrl?.let { url ->
+                    IconButton(onClick = { openLink(url) }) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_link),
+                            contentDescription = "Wiki"
+                        )
+                    }
                 }
-
-                Text(
-                    modifier = Modifier.alpha(0.7f),
-                    text = formatDate(
-                        input = version.version.releaseTime,
-                        pattern = stringResource(R.string.date_format)
-                    ),
-                    style = MaterialTheme.typography.labelMedium
-                )
             }
 
-            wikiUrl?.let { url ->
-                IconButton(
-                    modifier = Modifier.size(32.dp),
-                    onClick = { onAccessWiki(url) }
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_link),
-                        contentDescription = "Wiki"
-                    )
+            Text(
+                text = "Selecionar versão",
+                style = MaterialTheme.typography.labelMedium,
+                modifier = Modifier.alpha(0.75f)
+            )
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                versions.sortedByDescending { it.version.releaseTime }.forEach { item ->
+                    Surface(
+                        onClick = { onVersionSelect(item.version.id) },
+                        shape = MaterialTheme.shapes.medium,
+                        color = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                    ) {
+                        Text(
+                            text = item.version.id,
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                    }
                 }
             }
         }
