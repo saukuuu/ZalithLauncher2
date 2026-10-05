@@ -120,6 +120,71 @@ private sealed interface VersionState {
 }
 
 /**
+ * 版本过滤条件
+ * @param release 是否保留正式版本
+ * @param snapshot 是否保留快照版本
+ * @param old 是否保留旧版本
+ * @param id 搜索并过滤版本ID
+ */
+private data class VersionFilter(
+    val release: Boolean = true,
+    val snapshot: Boolean = false,
+    val aprilFools: Boolean = false,
+    val old: Boolean = false,
+    val id: String = ""
+)
+
+private class VersionsViewModel : ViewModel() {
+    var versionState by mutableStateOf<VersionState>(VersionState.Loading)
+        private set
+
+    var versionFilter by mutableStateOf(VersionFilter())
+        private set
+
+    fun filterWith(filter: VersionFilter) {
+        versionFilter = filter
+        viewModelScope.launch {
+            val allVersions = MinecraftVersions.allVersions.value
+            versionState = VersionState.None(
+                versions = allVersions.filterVersions(versionFilter)
+            )
+        }
+    }
+
+    fun refresh(forceReload: Boolean = false) {
+        viewModelScope.launch {
+            versionState = VersionState.Loading
+            versionState = runCatching {
+                MinecraftVersions.refreshVersions(forceReload)
+                val allVersions = MinecraftVersions.allVersions.value
+                VersionState.None(allVersions.filterVersions(versionFilter))
+            }.getOrElse { e ->
+                Logger.warning(TAG, "Failed to get version manifest!", e)
+                val message: AndroidStringText = when (e) {
+                    is HttpRequestTimeoutException -> androidText(R.string.error_timeout)
+                    is UnknownHostException, is UnresolvedAddressException -> androidText(R.string.error_network_unreachable)
+                    is ConnectException -> androidText(R.string.error_connection_failed)
+                    is ResponseException -> e.toLocal()
+                    else -> {
+                        Logger.error(TAG, "An unknown exception was caught!", e)
+                        androidText(e.localizedMessage ?: e.message ?: e::class.qualifiedName ?: "Unknown error")
+                    }
+                }
+                VersionState.Failure(message)
+            }
+        }
+    }
+
+    init {
+        refresh()
+    }
+
+    override fun onCleared() {
+        viewModelScope.cancel()
+    }
+}
+
+/**
  * Host information for the Minecraft version selection screen.
  */
 sealed interface SelectGameVersionHost {
