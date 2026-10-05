@@ -64,8 +64,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.Painter
@@ -528,8 +528,9 @@ private fun VersionFamilyCard(
     var selectedId by remember(versions) { mutableStateOf(newest.version.id) }
     var menuOpen by remember { mutableStateOf(false) }
     val (fallbackIcon, _, wikiUrl, _) = getVersionComponents(newest)
-    val artwork = updateArtwork(family)
-    val updateName = updateThemeName(family)
+    val artwork = if (newest.type == MinecraftVersion.Type.Release) {
+        updateArtwork(family)
+    } else null
     val scale = remember { Animatable(initialValue = 0.96f) }
 
     LaunchedEffect(Unit) {
@@ -545,27 +546,32 @@ private fun VersionFamilyCard(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(220.dp)
+                .height(190.dp)
                 .clip(shape)
+                .backgroundGlass(blur, color, influencedByBackground)
         ) {
-            // The update artwork fills the ENTIRE card, like the requested reference UI.
-            Image(
-                painter = artwork?.let { painterResource(it) } ?: fallbackIcon
-                    ?: painterResource(R.drawable.img_minecraft),
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
+            // A arte da atualização preenche o cartão inteiro, sem dividir a imagem
+            // e as informações em duas áreas diferentes.
+            (artwork ?: fallbackIcon)?.let { painter ->
+                Image(
+                    painter = painter,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            }
 
-            // Dark gradient keeps text/buttons readable without splitting the artwork.
+            // Escurece principalmente a parte inferior para manter o texto legível.
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(
                         Brush.verticalGradient(
-                            0.0f to Color.Black.copy(alpha = 0.08f),
-                            0.42f to Color.Black.copy(alpha = 0.18f),
-                            1.0f to Color.Black.copy(alpha = 0.88f)
+                            colors = listOf(
+                                Color.Black.copy(alpha = 0.06f),
+                                Color.Black.copy(alpha = 0.18f),
+                                Color.Black.copy(alpha = 0.82f)
+                            )
                         )
                     )
             )
@@ -587,21 +593,24 @@ private fun VersionFamilyCard(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
                     .fillMaxWidth()
-                    .padding(12.dp),
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
                 verticalArrangement = Arrangement.spacedBy(3.dp)
             ) {
                 Text(
-                    text = if (newest.type == MinecraftVersion.Type.Release) "Minecraft $family" else newest.version.id,
+                    text = if (newest.type == MinecraftVersion.Type.Release) {
+                        "Minecraft $family"
+                    } else newest.version.id,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = Color.White,
                     maxLines = 1
                 )
 
-                // Replaces the old "Lançamento" label with the update's actual theme name.
-                if (updateName != null) {
+                // No lugar da antiga etiqueta "Lançamento", mostramos o nome
+                // da atualização, como no layout de referência.
+                updateTitle(family)?.let { title ->
                     Text(
-                        text = updateName,
+                        text = title,
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.SemiBold,
                         color = Color.White.copy(alpha = 0.92f),
@@ -615,7 +624,7 @@ private fun VersionFamilyCard(
                         pattern = stringResource(R.string.date_format)
                     ),
                     style = MaterialTheme.typography.labelMedium,
-                    color = Color.White.copy(alpha = 0.76f),
+                    color = Color.White.copy(alpha = 0.78f),
                     maxLines = 1
                 )
 
@@ -628,13 +637,13 @@ private fun VersionFamilyCard(
                         Surface(
                             onClick = { menuOpen = !menuOpen },
                             shape = MaterialTheme.shapes.medium,
-                            color = Color.Black.copy(alpha = 0.50f),
+                            color = Color.Black.copy(alpha = 0.55f),
                             contentColor = Color.White
                         ) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 10.dp, vertical = 9.dp),
+                                    .padding(horizontal = 10.dp, vertical = 8.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
@@ -643,7 +652,10 @@ private fun VersionFamilyCard(
                                     maxLines = 1,
                                     style = MaterialTheme.typography.labelLarge
                                 )
-                                Text(if (menuOpen) "▲" else "▼", style = MaterialTheme.typography.labelSmall)
+                                Text(
+                                    text = if (menuOpen) "▲" else "▼",
+                                    style = MaterialTheme.typography.labelSmall
+                                )
                             }
                         }
                     }
@@ -651,6 +663,10 @@ private fun VersionFamilyCard(
                     Button(
                         onClick = { onVersionSelect(selectedId) },
                         shape = MaterialTheme.shapes.medium,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        ),
                         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
                     ) {
                         Text("Selecionar", maxLines = 1)
@@ -671,13 +687,14 @@ private fun VersionFamilyCard(
                                     menuOpen = false
                                 },
                                 shape = MaterialTheme.shapes.small,
-                                color = if (item.version.id == selectedId)
-                                    MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.95f)
-                                else
-                                    Color.Black.copy(alpha = 0.68f),
-                                contentColor = if (item.version.id == selectedId)
-                                    MaterialTheme.colorScheme.onSecondaryContainer
-                                else Color.White
+                                color = if (item.version.id == selectedId) {
+                                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.92f)
+                                } else {
+                                    Color.Black.copy(alpha = 0.70f)
+                                },
+                                contentColor = if (item.version.id == selectedId) {
+                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                } else Color.White
                             ) {
                                 Text(
                                     text = item.version.id,
@@ -693,28 +710,8 @@ private fun VersionFamilyCard(
     }
 }
 
-/** Artwork resources supplied for each major release family. */
-private fun updateArtwork(family: String): Int? = when (family) {
-    "26.3" -> R.drawable.update_26_3
-    "26.2" -> R.drawable.update_26_2
-    "26.1" -> R.drawable.update_26_1
-    "1.21" -> R.drawable.update_1_21
-    "1.20" -> R.drawable.update_1_20
-    "1.19" -> R.drawable.update_1_19
-    "1.18" -> R.drawable.update_1_18
-    "1.17" -> R.drawable.update_1_17
-    "1.16" -> R.drawable.update_1_16
-    "1.15" -> R.drawable.update_1_15
-    "1.14" -> R.drawable.update_1_14
-    "1.13" -> R.drawable.update_1_13
-    else -> null
-}
-
-/** Names shown directly below "Minecraft x.xx". */
-private fun updateThemeName(family: String): String? = when (family) {
-    "26.3" -> "Wilderness Bound"
-    "26.2" -> "Chaos Cubed"
-    "26.1" -> "Tiny Takeover"
+/** Nome exibido abaixo de "Minecraft x.xx". */
+private fun updateTitle(family: String): String? = when (family) {
     "1.21" -> "Tricky Trials"
     "1.20" -> "Trails & Tales"
     "1.19" -> "The Wild Update"
@@ -724,6 +721,35 @@ private fun updateThemeName(family: String): String? = when (family) {
     "1.15" -> "Buzzy Bees"
     "1.14" -> "Village & Pillage"
     "1.13" -> "Update Aquatic"
+    "1.12" -> "Color Update"
+    "1.11" -> "Exploration Update"
+    "1.9" -> "Combat Update"
+    "1.6" -> "Horse Update"
+    else -> null
+}
+
+/**
+ * Arte usada como fundo de cada cartão de release.
+ * Os nomes abaixo precisam existir em app/src/main/res/drawable.
+ */
+@Composable
+private fun updateArtwork(family: String): Painter? = when (family) {
+    "26.3" -> painterResource(R.drawable.update_26_3)
+    "26.2" -> painterResource(R.drawable.update_26_2)
+    "26.1" -> painterResource(R.drawable.update_26_1)
+    "1.21" -> painterResource(R.drawable.update_1_21)
+    "1.20" -> painterResource(R.drawable.update_1_20)
+    "1.19" -> painterResource(R.drawable.update_1_19)
+    "1.18" -> painterResource(R.drawable.update_1_18)
+    "1.17" -> painterResource(R.drawable.update_1_17)
+    "1.16" -> painterResource(R.drawable.update_1_16)
+    "1.15" -> painterResource(R.drawable.update_1_15)
+    "1.14" -> painterResource(R.drawable.update_1_14)
+    "1.13" -> painterResource(R.drawable.update_1_13)
+    "1.12" -> painterResource(R.drawable.update_1_12)
+    "1.11" -> painterResource(R.drawable.update_1_11)
+    "1.9" -> painterResource(R.drawable.update_1_9)
+    "1.6" -> painterResource(R.drawable.update_1_6)
     else -> null
 }
 
