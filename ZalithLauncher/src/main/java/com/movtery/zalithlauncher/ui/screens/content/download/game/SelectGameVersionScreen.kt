@@ -741,15 +741,10 @@ private fun updateArtwork(family: String): Painter? = when (family) {
     "1.20" -> painterResource(R.drawable.update_1_20)
     "1.19" -> painterResource(R.drawable.update_1_19)
     "1.18" -> painterResource(R.drawable.update_1_18)
-    "1.17" -> painterResource(R.drawable.update_1_17)
     "1.16" -> painterResource(R.drawable.update_1_16)
     "1.15" -> painterResource(R.drawable.update_1_15)
     "1.14" -> painterResource(R.drawable.update_1_14)
     "1.13" -> painterResource(R.drawable.update_1_13)
-    "1.12" -> painterResource(R.drawable.update_1_12)
-    "1.11" -> painterResource(R.drawable.update_1_11)
-    "1.9" -> painterResource(R.drawable.update_1_9)
-    "1.6" -> painterResource(R.drawable.update_1_6)
     else -> null
 }
 
