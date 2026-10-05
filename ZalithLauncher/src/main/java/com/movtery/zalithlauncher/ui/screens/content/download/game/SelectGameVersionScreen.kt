@@ -36,13 +36,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -58,6 +62,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
@@ -68,6 +73,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -462,7 +468,7 @@ private fun VersionList(
     onVersionSelect: (String) -> Unit,
     openLink: (url: String) -> Unit
 ) {
-    val scrollState = rememberLazyListState()
+    val gridState = rememberLazyGridState()
     val groupedVersions = remember(versions) {
         versions.groupBy { version ->
             if (version.type == MinecraftVersion.Type.Release) {
@@ -473,19 +479,19 @@ private fun VersionList(
         }.toList()
     }
 
-    LazyColumn(
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 205.dp),
         modifier = modifier.nonInteractiveScrollbar(
-            state = scrollState.scrollIndicatorState!!,
-            orientation = Orientation.Vertical,
+            state = gridState.scrollIndicatorState!!,
+            orientation = Orientation.Vertical
         ),
-        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-        state = scrollState,
+        state = gridState,
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        items(groupedVersions) { (family, familyVersions) ->
+        items(groupedVersions, key = { it.first }) { (family, familyVersions) ->
             VersionFamilyCard(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 6.dp),
                 family = family,
                 versions = familyVersions,
                 onVersionSelect = onVersionSelect,
@@ -510,22 +516,24 @@ private fun VersionFamilyCard(
     versions: List<MinecraftVersion>,
     onVersionSelect: (String) -> Unit,
     openLink: (String) -> Unit,
-    shape: Shape = MaterialTheme.shapes.extraLarge,
+    shape: Shape = MaterialTheme.shapes.large,
     influencedByBackground: Boolean = true,
     color: Color = cardColor(influencedByBackground),
     contentColor: Color = onCardColor(),
     blur: Int = AllSettings.backgroundBlur.state,
 ) {
     val newest = versions.maxByOrNull { it.version.releaseTime } ?: return
-    val scale = remember { Animatable(initialValue = 0.95f) }
+    var selectedId by remember(versions) { mutableStateOf(newest.version.id) }
+    var menuOpen by remember { mutableStateOf(false) }
+    val (icon, versionType, wikiUrl, _) = getVersionComponents(newest)
+    val scale = remember { Animatable(initialValue = 0.96f) }
+
     LaunchedEffect(Unit) {
-        scale.animateTo(targetValue = 1f, animationSpec = getAnimateTween())
+        scale.animateTo(1f, animationSpec = getAnimateTween())
     }
 
-    val (icon, versionType, wikiUrl, summary) = getVersionComponents(newest)
-
     Surface(
-        modifier = modifier.graphicsLayer(scaleY = scale.value, scaleX = scale.value),
+        modifier = modifier.graphicsLayer(scaleX = scale.value, scaleY = scale.value),
         shape = shape,
         color = color,
         contentColor = contentColor
@@ -534,65 +542,28 @@ private fun VersionFamilyCard(
             modifier = Modifier
                 .clip(shape)
                 .backgroundGlass(blur, color, influencedByBackground)
-                .padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+            // Large update-art area. For now it uses the launcher's built-in artwork.
+            // Later each family can point to its own drawable (1.17, 1.18, etc.).
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(108.dp),
+                contentAlignment = Alignment.Center
             ) {
-                // Placeholder for the update artwork. The project currently only ships generic
-                // Minecraft artwork; themed update images can replace this drawable per family.
-                icon?.let { versionIcon ->
-                    Surface(
-                        modifier = Modifier.size(72.dp),
-                        shape = MaterialTheme.shapes.large,
-                        color = MaterialTheme.colorScheme.surfaceVariant
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Image(
-                                modifier = Modifier.size(48.dp),
-                                painter = versionIcon,
-                                contentDescription = null
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.width(14.dp))
-                }
-
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text(
-                        text = if (newest.type == MinecraftVersion.Type.Release) "Minecraft $family" else newest.version.id,
-                        style = MaterialTheme.typography.titleMedium
+                icon?.let {
+                    Image(
+                        painter = it,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
                     )
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        LittleTextLabel(text = versionType)
-                        Text(
-                            modifier = Modifier.alpha(0.7f),
-                            text = formatDate(
-                                input = newest.version.releaseTime,
-                                pattern = stringResource(R.string.date_format)
-                            ),
-                            style = MaterialTheme.typography.labelMedium
-                        )
-                    }
-                    summary?.let {
-                        Text(
-                            modifier = Modifier.alpha(0.7f),
-                            text = it,
-                            style = MaterialTheme.typography.labelMedium
-                        )
-                    }
                 }
-
                 wikiUrl?.let { url ->
-                    IconButton(onClick = { openLink(url) }) {
+                    IconButton(
+                        modifier = Modifier.align(Alignment.TopEnd),
+                        onClick = { openLink(url) }
+                    ) {
                         Icon(
                             painter = painterResource(R.drawable.ic_link),
                             contentDescription = "Wiki"
@@ -601,30 +572,93 @@ private fun VersionFamilyCard(
                 }
             }
 
-            Text(
-                text = "Selecionar versão",
-                style = MaterialTheme.typography.labelMedium,
-                modifier = Modifier.alpha(0.75f)
-            )
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            Column(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(5.dp)
             ) {
-                versions.sortedByDescending { it.version.releaseTime }.forEach { item ->
-                    Surface(
-                        onClick = { onVersionSelect(item.version.id) },
+                Text(
+                    text = if (newest.type == MinecraftVersion.Type.Release) "Minecraft $family" else newest.version.id,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1
+                )
+
+                LittleTextLabel(text = versionType)
+
+                Text(
+                    modifier = Modifier.alpha(0.72f),
+                    text = formatDate(
+                        input = newest.version.releaseTime,
+                        pattern = stringResource(R.string.date_format)
+                    ),
+                    style = MaterialTheme.typography.labelMedium,
+                    maxLines = 1
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Box(modifier = Modifier.weight(1f)) {
+                        Surface(
+                            onClick = { menuOpen = !menuOpen },
+                            shape = MaterialTheme.shapes.medium,
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 10.dp, vertical = 9.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = selectedId,
+                                    modifier = Modifier.weight(1f),
+                                    maxLines = 1,
+                                    style = MaterialTheme.typography.labelLarge
+                                )
+                                Text(if (menuOpen) "▲" else "▼", style = MaterialTheme.typography.labelSmall)
+                            }
+                        }
+                    }
+
+                    Button(
+                        onClick = { onVersionSelect(selectedId) },
                         shape = MaterialTheme.shapes.medium,
-                        color = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
                     ) {
-                        Text(
-                            text = item.version.id,
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
-                            style = MaterialTheme.typography.labelLarge
-                        )
+                        Text("Selecionar", maxLines = 1)
+                    }
+                }
+
+                if (menuOpen && versions.size > 1) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        versions.sortedByDescending { it.version.releaseTime }.forEach { item ->
+                            Surface(
+                                onClick = {
+                                    selectedId = item.version.id
+                                    menuOpen = false
+                                },
+                                shape = MaterialTheme.shapes.small,
+                                color = if (item.version.id == selectedId)
+                                    MaterialTheme.colorScheme.secondaryContainer
+                                else
+                                    MaterialTheme.colorScheme.surfaceVariant
+                            ) {
+                                Text(
+                                    text = item.version.id,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                    style = MaterialTheme.typography.labelMedium
+                                )
+                            }
+                        }
                     }
                 }
             }
