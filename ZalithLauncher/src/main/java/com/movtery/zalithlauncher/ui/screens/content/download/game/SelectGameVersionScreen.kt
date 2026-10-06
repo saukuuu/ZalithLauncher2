@@ -20,7 +20,10 @@ package com.movtery.zalithlauncher.ui.screens.content.download.game
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -62,10 +65,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.Painter
@@ -412,19 +418,12 @@ private fun VersionHeader(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    SimpleTextInputField(
+                    ModernSearchField(
                         modifier = Modifier.weight(1f),
                         value = versionFilter.id,
                         onValueChange = { onVersionFilterChange(versionFilter.copy(id = it)) },
-                        color = itemContainerColor,
-                        contentColor = itemContentColor,
-                        singleLine = true,
-                        hint = {
-                            Text(
-                                text = stringResource(R.string.generic_search),
-                                style = TextStyle(color = itemContentColor).copy(fontSize = 12.sp)
-                            )
-                        }
+                        containerColor = itemContainerColor,
+                        contentColor = itemContentColor
                     )
 
                     IconButton(
@@ -442,6 +441,88 @@ private fun VersionHeader(
         HorizontalDivider(
             modifier = Modifier.fillMaxWidth(),
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+        )
+    }
+}
+
+@Composable
+private fun ModernSearchField(
+    modifier: Modifier = Modifier,
+    value: String,
+    onValueChange: (String) -> Unit,
+    containerColor: Color,
+    contentColor: Color
+) {
+    val shape = MaterialTheme.shapes.large
+    val glow = Color.White.copy(alpha = 0.22f)
+
+    Surface(
+        modifier = modifier
+            .shadow(
+                elevation = 7.dp,
+                shape = shape,
+                ambientColor = glow,
+                spotColor = glow
+            )
+            .border(1.dp, Color.White.copy(alpha = 0.16f), shape),
+        shape = shape,
+        color = containerColor.copy(alpha = 0.96f),
+        contentColor = contentColor
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(9.dp)
+        ) {
+            SearchIcon(
+                modifier = Modifier.size(18.dp),
+                color = contentColor.copy(alpha = 0.88f)
+            )
+
+            BasicTextField(
+                value = value,
+                onValueChange = onValueChange,
+                modifier = Modifier.weight(1f),
+                singleLine = true,
+                textStyle = MaterialTheme.typography.bodyMedium.copy(color = contentColor),
+                cursorBrush = SolidColor(contentColor),
+                decorationBox = { innerTextField ->
+                    Box {
+                        if (value.isEmpty()) {
+                            Text(
+                                text = stringResource(R.string.generic_search),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = contentColor.copy(alpha = 0.55f)
+                            )
+                        }
+                        innerTextField()
+                    }
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun SearchIcon(
+    modifier: Modifier = Modifier,
+    color: Color
+) {
+    Canvas(modifier = modifier) {
+        val stroke = size.minDimension * 0.11f
+        val radius = size.minDimension * 0.28f
+        val center = Offset(size.width * 0.42f, size.height * 0.42f)
+        drawCircle(
+            color = color,
+            radius = radius,
+            center = center,
+            style = Stroke(width = stroke)
+        )
+        drawLine(
+            color = color,
+            start = Offset(center.x + radius * 0.72f, center.y + radius * 0.72f),
+            end = Offset(size.width * 0.88f, size.height * 0.88f),
+            strokeWidth = stroke
         )
     }
 }
@@ -521,110 +602,87 @@ private fun VersionFamilyCard(
     shape: Shape = MaterialTheme.shapes.large,
     influencedByBackground: Boolean = true,
     color: Color = cardColor(influencedByBackground),
-    contentColor: Color = Color.White,
+    contentColor: Color = onCardColor(),
     blur: Int = AllSettings.backgroundBlur.state,
 ) {
     val newest = versions.maxByOrNull { it.version.releaseTime } ?: return
     var selectedId by remember(versions) { mutableStateOf(newest.version.id) }
     var menuOpen by remember { mutableStateOf(false) }
-    val (fallbackIcon, _, wikiUrl, _) = getVersionComponents(newest)
-    val artwork = if (newest.type == MinecraftVersion.Type.Release) {
-        updateArtwork(family)
-    } else null
+    val (icon, versionType, wikiUrl, _) = getVersionComponents(newest)
     val scale = remember { Animatable(initialValue = 0.96f) }
+    val glowColor = updateGlowColor(family)
 
     LaunchedEffect(Unit) {
         scale.animateTo(1f, animationSpec = getAnimateTween())
     }
 
     Surface(
-        modifier = modifier.graphicsLayer(scaleX = scale.value, scaleY = scale.value),
+        modifier = modifier
+            .shadow(
+                elevation = 10.dp,
+                shape = shape,
+                ambientColor = glowColor.copy(alpha = 0.55f),
+                spotColor = glowColor.copy(alpha = 0.70f)
+            )
+            .graphicsLayer(scaleX = scale.value, scaleY = scale.value),
         shape = shape,
         color = color,
         contentColor = contentColor
     ) {
-        Box(
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(190.dp)
                 .clip(shape)
                 .backgroundGlass(blur, color, influencedByBackground)
         ) {
-            // A arte da atualização preenche o cartão inteiro, sem dividir a imagem
-            // e as informações em duas áreas diferentes.
-            (artwork ?: fallbackIcon)?.let { painter ->
-                Image(
-                    painter = painter,
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-            }
-
-            // Escurece principalmente a parte inferior para manter o texto legível.
+            // Large update-art area. For now it uses the launcher's built-in artwork.
+            // Later each family can point to its own drawable (1.17, 1.18, etc.).
             Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                Color.Black.copy(alpha = 0.06f),
-                                Color.Black.copy(alpha = 0.18f),
-                                Color.Black.copy(alpha = 0.82f)
-                            )
+                    .fillMaxWidth()
+                    .height(108.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                icon?.let {
+                    Image(
+                        painter = it,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+                wikiUrl?.let { url ->
+                    IconButton(
+                        modifier = Modifier.align(Alignment.TopEnd),
+                        onClick = { openLink(url) }
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_link),
+                            contentDescription = "Wiki"
                         )
-                    )
-            )
-
-            wikiUrl?.let { url ->
-                IconButton(
-                    modifier = Modifier.align(Alignment.TopEnd),
-                    onClick = { openLink(url) }
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_link),
-                        contentDescription = "Wiki",
-                        tint = Color.White
-                    )
+                    }
                 }
             }
 
             Column(
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
-                verticalArrangement = Arrangement.spacedBy(3.dp)
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(5.dp)
             ) {
                 Text(
-                    text = if (newest.type == MinecraftVersion.Type.Release) {
-                        "Minecraft $family"
-                    } else newest.version.id,
+                    text = if (newest.type == MinecraftVersion.Type.Release) "Minecraft $family" else newest.version.id,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White,
                     maxLines = 1
                 )
 
-                // No lugar da antiga etiqueta "Lançamento", mostramos o nome
-                // da atualização, como no layout de referência.
-                updateTitle(family)?.let { title ->
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color.White.copy(alpha = 0.92f),
-                        maxLines = 1
-                    )
-                }
+                LittleTextLabel(text = versionType)
 
                 Text(
+                    modifier = Modifier.alpha(0.72f),
                     text = formatDate(
                         input = newest.version.releaseTime,
                         pattern = stringResource(R.string.date_format)
                     ),
                     style = MaterialTheme.typography.labelMedium,
-                    color = Color.White.copy(alpha = 0.78f),
                     maxLines = 1
                 )
 
@@ -637,25 +695,31 @@ private fun VersionFamilyCard(
                         Surface(
                             onClick = { menuOpen = !menuOpen },
                             shape = MaterialTheme.shapes.medium,
-                            color = Color.Black.copy(alpha = 0.55f),
-                            contentColor = Color.White
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                         ) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                                    .padding(horizontal = 10.dp, vertical = 9.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
+                                Image(
+                                    painter = painterResource(R.drawable.img_minecraft),
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .size(20.dp)
+                                        .clip(MaterialTheme.shapes.extraSmall),
+                                    contentScale = ContentScale.Crop
+                                )
+                                Spacer(Modifier.width(7.dp))
                                 Text(
                                     text = selectedId,
                                     modifier = Modifier.weight(1f),
                                     maxLines = 1,
                                     style = MaterialTheme.typography.labelLarge
                                 )
-                                Text(
-                                    text = if (menuOpen) "▲" else "▼",
-                                    style = MaterialTheme.typography.labelSmall
-                                )
+                                Text(if (menuOpen) "▲" else "▼", style = MaterialTheme.typography.labelSmall)
                             }
                         }
                     }
@@ -663,11 +727,11 @@ private fun VersionFamilyCard(
                     Button(
                         onClick = { onVersionSelect(selectedId) },
                         shape = MaterialTheme.shapes.medium,
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
-                        ),
-                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
+                            containerColor = Color(0xFF21A83B),
+                            contentColor = Color.White
+                        )
                     ) {
                         Text("Selecionar", maxLines = 1)
                     }
@@ -687,20 +751,29 @@ private fun VersionFamilyCard(
                                     menuOpen = false
                                 },
                                 shape = MaterialTheme.shapes.small,
-                                color = if (item.version.id == selectedId) {
-                                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.92f)
-                                } else {
-                                    Color.Black.copy(alpha = 0.70f)
-                                },
-                                contentColor = if (item.version.id == selectedId) {
-                                    MaterialTheme.colorScheme.onPrimaryContainer
-                                } else Color.White
+                                color = if (item.version.id == selectedId)
+                                    MaterialTheme.colorScheme.secondaryContainer
+                                else
+                                    MaterialTheme.colorScheme.surfaceVariant
                             ) {
-                                Text(
-                                    text = item.version.id,
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                    style = MaterialTheme.typography.labelMedium
-                                )
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Image(
+                                        painter = painterResource(R.drawable.img_minecraft),
+                                        contentDescription = null,
+                                        modifier = Modifier
+                                            .size(17.dp)
+                                            .clip(MaterialTheme.shapes.extraSmall),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                    Text(
+                                        text = item.version.id,
+                                        style = MaterialTheme.typography.labelMedium
+                                    )
+                                }
                             }
                         }
                     }
@@ -710,42 +783,25 @@ private fun VersionFamilyCard(
     }
 }
 
-/** Nome exibido abaixo de "Minecraft x.xx". */
-private fun updateTitle(family: String): String? = when (family) {
-    "1.21" -> "Tricky Trials"
-    "1.20" -> "Trails & Tales"
-    "1.19" -> "The Wild Update"
-    "1.18" -> "Caves & Cliffs: Part II"
-    "1.17" -> "Caves & Cliffs: Part I"
-    "1.16" -> "Nether Update"
-    "1.15" -> "Buzzy Bees"
-    "1.14" -> "Village & Pillage"
-    "1.13" -> "Update Aquatic"
-    "1.12" -> "Color Update"
-    "1.11" -> "Exploration Update"
-    "1.9" -> "Combat Update"
-    "1.6" -> "Horse Update"
-    else -> null
-}
-
-/**
- * Arte usada como fundo de cada cartão de release.
- * Os nomes abaixo precisam existir em app/src/main/res/drawable.
- */
-@Composable
-private fun updateArtwork(family: String): Painter? = when (family) {
-    "26.3" -> painterResource(R.drawable.update_26_3)
-    "26.2" -> painterResource(R.drawable.update_26_2)
-    "26.1" -> painterResource(R.drawable.update_26_1)
-    "1.21" -> painterResource(R.drawable.update_1_21)
-    "1.20" -> painterResource(R.drawable.update_1_20)
-    "1.19" -> painterResource(R.drawable.update_1_19)
-    "1.18" -> painterResource(R.drawable.update_1_18)
-    "1.16" -> painterResource(R.drawable.update_1_16)
-    "1.15" -> painterResource(R.drawable.update_1_15)
-    "1.14" -> painterResource(R.drawable.update_1_14)
-    "1.13" -> painterResource(R.drawable.update_1_13)
-    else -> null
+private fun updateGlowColor(family: String): Color = when (family) {
+    "26.3" -> Color(0xFFFF7043)
+    "26.2" -> Color(0xFFA5D66A)
+    "26.1" -> Color(0xFFFFD54F)
+    "1.21" -> Color(0xFFFFB74D)
+    "1.20" -> Color(0xFFE879B9)
+    "1.19" -> Color(0xFF66BB6A)
+    "1.18" -> Color(0xFF64B5F6)
+    "1.17" -> Color(0xFFB39DDB)
+    "1.16" -> Color(0xFFFF7043)
+    "1.15" -> Color(0xFFFFD54F)
+    "1.14" -> Color(0xFFFFB74D)
+    "1.13" -> Color(0xFF29B6F6)
+    "1.12" -> Color(0xFFCE93D8)
+    "1.11" -> Color(0xFF81C784)
+    "1.10" -> Color(0xFFBCAAA4)
+    "1.9" -> Color(0xFF9575CD)
+    "1.6" -> Color(0xFF8BC34A)
+    else -> Color.White.copy(alpha = 0.75f)
 }
 
 @Composable
