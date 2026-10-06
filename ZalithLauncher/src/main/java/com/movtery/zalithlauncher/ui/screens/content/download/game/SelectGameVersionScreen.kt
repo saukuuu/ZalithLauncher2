@@ -22,8 +22,6 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -65,15 +63,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -418,13 +415,60 @@ private fun VersionHeader(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    ModernSearchField(
-                        modifier = Modifier.weight(1f),
-                        value = versionFilter.id,
-                        onValueChange = { onVersionFilterChange(versionFilter.copy(id = it)) },
-                        containerColor = itemContainerColor,
-                        contentColor = itemContentColor
-                    )
+                    // Barra de pesquisa: mantém a fonte original, adiciona lupa e um glow branco suave.
+                    Row(
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(vertical = 4.dp)
+                            .drawBehind {
+                                val radius = 14.dp.toPx()
+                                repeat(4) { index ->
+                                    drawRoundRect(
+                                        color = Color.White.copy(alpha = 0.10f - index * 0.018f),
+                                        topLeft = androidx.compose.ui.geometry.Offset(-index * 1.5.dp.toPx(), -index * 1.5.dp.toPx()),
+                                        size = androidx.compose.ui.geometry.Size(
+                                            size.width + index * 3.dp.toPx(),
+                                            size.height + index * 3.dp.toPx()
+                                        ),
+                                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(radius),
+                                        style = Stroke(width = (1.2.dp + index.dp).toPx())
+                                    )
+                                }
+                            },
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Canvas(modifier = Modifier.size(20.dp)) {
+                            val stroke = 2.dp.toPx()
+                            drawCircle(
+                                color = itemContentColor.copy(alpha = 0.92f),
+                                radius = size.minDimension * 0.30f,
+                                center = androidx.compose.ui.geometry.Offset(size.width * 0.43f, size.height * 0.43f),
+                                style = Stroke(width = stroke)
+                            )
+                            drawLine(
+                                color = itemContentColor.copy(alpha = 0.92f),
+                                start = androidx.compose.ui.geometry.Offset(size.width * 0.64f, size.height * 0.64f),
+                                end = androidx.compose.ui.geometry.Offset(size.width * 0.88f, size.height * 0.88f),
+                                strokeWidth = stroke
+                            )
+                        }
+
+                        SimpleTextInputField(
+                            modifier = Modifier.weight(1f),
+                            value = versionFilter.id,
+                            onValueChange = { onVersionFilterChange(versionFilter.copy(id = it)) },
+                            color = itemContainerColor,
+                            contentColor = itemContentColor,
+                            singleLine = true,
+                            hint = {
+                                Text(
+                                    text = stringResource(R.string.generic_search),
+                                    style = TextStyle(color = itemContentColor).copy(fontSize = 12.sp)
+                                )
+                            }
+                        )
+                    }
 
                     IconButton(
                         onClick = onRefreshClick
@@ -441,88 +485,6 @@ private fun VersionHeader(
         HorizontalDivider(
             modifier = Modifier.fillMaxWidth(),
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
-        )
-    }
-}
-
-@Composable
-private fun ModernSearchField(
-    modifier: Modifier = Modifier,
-    value: String,
-    onValueChange: (String) -> Unit,
-    containerColor: Color,
-    contentColor: Color
-) {
-    val shape = MaterialTheme.shapes.large
-    val glow = Color.White.copy(alpha = 0.22f)
-
-    Surface(
-        modifier = modifier
-            .shadow(
-                elevation = 7.dp,
-                shape = shape,
-                ambientColor = glow,
-                spotColor = glow
-            )
-            .border(1.dp, Color.White.copy(alpha = 0.16f), shape),
-        shape = shape,
-        color = containerColor.copy(alpha = 0.96f),
-        contentColor = contentColor
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(9.dp)
-        ) {
-            SearchIcon(
-                modifier = Modifier.size(18.dp),
-                color = contentColor.copy(alpha = 0.88f)
-            )
-
-            BasicTextField(
-                value = value,
-                onValueChange = onValueChange,
-                modifier = Modifier.weight(1f),
-                singleLine = true,
-                textStyle = MaterialTheme.typography.bodyMedium.copy(color = contentColor),
-                cursorBrush = SolidColor(contentColor),
-                decorationBox = { innerTextField ->
-                    Box {
-                        if (value.isEmpty()) {
-                            Text(
-                                text = stringResource(R.string.generic_search),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = contentColor.copy(alpha = 0.55f)
-                            )
-                        }
-                        innerTextField()
-                    }
-                }
-            )
-        }
-    }
-}
-
-@Composable
-private fun SearchIcon(
-    modifier: Modifier = Modifier,
-    color: Color
-) {
-    Canvas(modifier = modifier) {
-        val stroke = size.minDimension * 0.11f
-        val radius = size.minDimension * 0.28f
-        val center = Offset(size.width * 0.42f, size.height * 0.42f)
-        drawCircle(
-            color = color,
-            radius = radius,
-            center = center,
-            style = Stroke(width = stroke)
-        )
-        drawLine(
-            color = color,
-            start = Offset(center.x + radius * 0.72f, center.y + radius * 0.72f),
-            end = Offset(size.width * 0.88f, size.height * 0.88f),
-            strokeWidth = stroke
         )
     }
 }
@@ -602,15 +564,18 @@ private fun VersionFamilyCard(
     shape: Shape = MaterialTheme.shapes.large,
     influencedByBackground: Boolean = true,
     color: Color = cardColor(influencedByBackground),
-    contentColor: Color = onCardColor(),
+    contentColor: Color = Color.White,
     blur: Int = AllSettings.backgroundBlur.state,
 ) {
     val newest = versions.maxByOrNull { it.version.releaseTime } ?: return
     var selectedId by remember(versions) { mutableStateOf(newest.version.id) }
     var menuOpen by remember { mutableStateOf(false) }
-    val (icon, versionType, wikiUrl, _) = getVersionComponents(newest)
-    val scale = remember { Animatable(initialValue = 0.96f) }
+    val (fallbackIcon, _, wikiUrl, _) = getVersionComponents(newest)
+    val artwork = if (newest.type == MinecraftVersion.Type.Release) {
+        updateArtwork(family)
+    } else null
     val glowColor = updateGlowColor(family)
+    val scale = remember { Animatable(initialValue = 0.96f) }
 
     LaunchedEffect(Unit) {
         scale.animateTo(1f, animationSpec = getAnimateTween())
@@ -618,71 +583,108 @@ private fun VersionFamilyCard(
 
     Surface(
         modifier = modifier
-            .shadow(
-                elevation = 10.dp,
-                shape = shape,
-                ambientColor = glowColor.copy(alpha = 0.55f),
-                spotColor = glowColor.copy(alpha = 0.70f)
-            )
+            .padding(5.dp)
+            .drawBehind {
+                // Glow real para fora do cartão, sem transformar o brilho em uma borda sólida.
+                val corner = 18.dp.toPx()
+                repeat(5) { index ->
+                    val spread = (index + 1) * 1.7.dp.toPx()
+                    drawRoundRect(
+                        color = glowColor.copy(alpha = 0.16f - index * 0.022f),
+                        topLeft = androidx.compose.ui.geometry.Offset(-spread, -spread),
+                        size = androidx.compose.ui.geometry.Size(size.width + spread * 2, size.height + spread * 2),
+                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(corner + spread),
+                        style = Stroke(width = (3.dp + index.dp).toPx())
+                    )
+                }
+            }
             .graphicsLayer(scaleX = scale.value, scaleY = scale.value),
         shape = shape,
         color = color,
         contentColor = contentColor
     ) {
-        Column(
+        Box(
             modifier = Modifier
+                .fillMaxWidth()
+                .height(190.dp)
                 .clip(shape)
                 .backgroundGlass(blur, color, influencedByBackground)
         ) {
-            // Large update-art area. For now it uses the launcher's built-in artwork.
-            // Later each family can point to its own drawable (1.17, 1.18, etc.).
+            // A arte da atualização preenche o cartão inteiro, sem dividir a imagem
+            // e as informações em duas áreas diferentes.
+            (artwork ?: fallbackIcon)?.let { painter ->
+                Image(
+                    painter = painter,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            }
+
+            // Escurece principalmente a parte inferior para manter o texto legível.
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(108.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                icon?.let {
-                    Image(
-                        painter = it,
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                }
-                wikiUrl?.let { url ->
-                    IconButton(
-                        modifier = Modifier.align(Alignment.TopEnd),
-                        onClick = { openLink(url) }
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_link),
-                            contentDescription = "Wiki"
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Black.copy(alpha = 0.06f),
+                                Color.Black.copy(alpha = 0.18f),
+                                Color.Black.copy(alpha = 0.82f)
+                            )
                         )
-                    }
+                    )
+            )
+
+            wikiUrl?.let { url ->
+                IconButton(
+                    modifier = Modifier.align(Alignment.TopEnd),
+                    onClick = { openLink(url) }
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_link),
+                        contentDescription = "Wiki",
+                        tint = Color.White
+                    )
                 }
             }
 
             Column(
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(5.dp)
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(3.dp)
             ) {
                 Text(
-                    text = if (newest.type == MinecraftVersion.Type.Release) "Minecraft $family" else newest.version.id,
+                    text = if (newest.type == MinecraftVersion.Type.Release) {
+                        "Minecraft $family"
+                    } else newest.version.id,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
+                    color = Color.White,
                     maxLines = 1
                 )
 
-                LittleTextLabel(text = versionType)
+                // No lugar da antiga etiqueta "Lançamento", mostramos o nome
+                // da atualização, como no layout de referência.
+                updateTitle(family)?.let { title ->
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White.copy(alpha = 0.92f),
+                        maxLines = 1
+                    )
+                }
 
                 Text(
-                    modifier = Modifier.alpha(0.72f),
                     text = formatDate(
                         input = newest.version.releaseTime,
                         pattern = stringResource(R.string.date_format)
                     ),
                     style = MaterialTheme.typography.labelMedium,
+                    color = Color.White.copy(alpha = 0.78f),
                     maxLines = 1
                 )
 
@@ -695,31 +697,32 @@ private fun VersionFamilyCard(
                         Surface(
                             onClick = { menuOpen = !menuOpen },
                             shape = MaterialTheme.shapes.medium,
-                            color = MaterialTheme.colorScheme.surfaceVariant,
-                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = Color.Black.copy(alpha = 0.55f),
+                            contentColor = Color.White
                         ) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 10.dp, vertical = 9.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
                                 Image(
                                     painter = painterResource(R.drawable.img_minecraft),
                                     contentDescription = null,
-                                    modifier = Modifier
-                                        .size(20.dp)
-                                        .clip(MaterialTheme.shapes.extraSmall),
-                                    contentScale = ContentScale.Crop
+                                    modifier = Modifier.size(18.dp),
+                                    contentScale = ContentScale.Fit
                                 )
-                                Spacer(Modifier.width(7.dp))
                                 Text(
                                     text = selectedId,
                                     modifier = Modifier.weight(1f),
                                     maxLines = 1,
                                     style = MaterialTheme.typography.labelLarge
                                 )
-                                Text(if (menuOpen) "▲" else "▼", style = MaterialTheme.typography.labelSmall)
+                                Text(
+                                    text = if (menuOpen) "▲" else "▼",
+                                    style = MaterialTheme.typography.labelSmall
+                                )
                             }
                         }
                     }
@@ -727,11 +730,11 @@ private fun VersionFamilyCard(
                     Button(
                         onClick = { onVersionSelect(selectedId) },
                         shape = MaterialTheme.shapes.medium,
-                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF21A83B),
+                            containerColor = Color(0xFF2EAD45),
                             contentColor = Color.White
-                        )
+                        ),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
                     ) {
                         Text("Selecionar", maxLines = 1)
                     }
@@ -751,23 +754,25 @@ private fun VersionFamilyCard(
                                     menuOpen = false
                                 },
                                 shape = MaterialTheme.shapes.small,
-                                color = if (item.version.id == selectedId)
-                                    MaterialTheme.colorScheme.secondaryContainer
-                                else
-                                    MaterialTheme.colorScheme.surfaceVariant
+                                color = if (item.version.id == selectedId) {
+                                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.92f)
+                                } else {
+                                    Color.Black.copy(alpha = 0.70f)
+                                },
+                                contentColor = if (item.version.id == selectedId) {
+                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                } else Color.White
                             ) {
                                 Row(
-                                    modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp),
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    horizontalArrangement = Arrangement.spacedBy(5.dp)
                                 ) {
                                     Image(
                                         painter = painterResource(R.drawable.img_minecraft),
                                         contentDescription = null,
-                                        modifier = Modifier
-                                            .size(17.dp)
-                                            .clip(MaterialTheme.shapes.extraSmall),
-                                        contentScale = ContentScale.Crop
+                                        modifier = Modifier.size(15.dp),
+                                        contentScale = ContentScale.Fit
                                     )
                                     Text(
                                         text = item.version.id,
@@ -783,25 +788,62 @@ private fun VersionFamilyCard(
     }
 }
 
+
+/** Cor do brilho externo de cada família de atualização. */
 private fun updateGlowColor(family: String): Color = when (family) {
-    "26.3" -> Color(0xFFFF7043)
-    "26.2" -> Color(0xFFA5D66A)
-    "26.1" -> Color(0xFFFFD54F)
-    "1.21" -> Color(0xFFFFB74D)
-    "1.20" -> Color(0xFFE879B9)
-    "1.19" -> Color(0xFF66BB6A)
-    "1.18" -> Color(0xFF64B5F6)
-    "1.17" -> Color(0xFFB39DDB)
-    "1.16" -> Color(0xFFFF7043)
-    "1.15" -> Color(0xFFFFD54F)
-    "1.14" -> Color(0xFFFFB74D)
-    "1.13" -> Color(0xFF29B6F6)
-    "1.12" -> Color(0xFFCE93D8)
-    "1.11" -> Color(0xFF81C784)
-    "1.10" -> Color(0xFFBCAAA4)
-    "1.9" -> Color(0xFF9575CD)
-    "1.6" -> Color(0xFF8BC34A)
-    else -> Color.White.copy(alpha = 0.75f)
+    "26.3", "1.16" -> Color(0xFFFF5A36)
+    "26.2", "1.15" -> Color(0xFF9EDC63)
+    "26.1", "1.12" -> Color(0xFFFFD84A)
+    "1.21" -> Color(0xFFE8B46A)
+    "1.20" -> Color(0xFFFF86C8)
+    "1.19", "1.18", "1.13" -> Color(0xFF59C9FF)
+    "1.17" -> Color(0xFFB58CFF)
+    "1.14", "1.11", "1.6" -> Color(0xFFFFC766)
+    "1.9" -> Color(0xFFB77CFF)
+    else -> Color.White.copy(alpha = 0.85f)
+}
+
+/** Nome exibido abaixo de "Minecraft x.xx". */
+private fun updateTitle(family: String): String? = when (family) {
+    "1.21" -> "Tricky Trials"
+    "1.20" -> "Trails & Tales"
+    "1.19" -> "The Wild Update"
+    "1.18" -> "Caves & Cliffs: Part II"
+    "1.17" -> "Caves & Cliffs: Part I"
+    "1.16" -> "Nether Update"
+    "1.15" -> "Buzzy Bees"
+    "1.14" -> "Village & Pillage"
+    "1.13" -> "Update Aquatic"
+    "1.12" -> "Color Update"
+    "1.11" -> "Exploration Update"
+    "1.9" -> "Combat Update"
+    "1.6" -> "Horse Update"
+    else -> null
+}
+
+/**
+ * Arte usada como fundo de cada cartão de release.
+ * Os nomes abaixo precisam existir em app/src/main/res/drawable.
+ */
+@Composable
+private fun updateArtwork(family: String): Painter? = when (family) {
+    "26.3" -> painterResource(R.drawable.update_26_3)
+    "26.2" -> painterResource(R.drawable.update_26_2)
+    "26.1" -> painterResource(R.drawable.update_26_1)
+    "1.21" -> painterResource(R.drawable.update_1_21)
+    "1.20" -> painterResource(R.drawable.update_1_20)
+    "1.19" -> painterResource(R.drawable.update_1_19)
+    "1.18" -> painterResource(R.drawable.update_1_18)
+    "1.17" -> painterResource(R.drawable.update_1_17)
+    "1.16" -> painterResource(R.drawable.update_1_16)
+    "1.15" -> painterResource(R.drawable.update_1_15)
+    "1.14" -> painterResource(R.drawable.update_1_14)
+    "1.13" -> painterResource(R.drawable.update_1_13)
+    "1.12" -> painterResource(R.drawable.update_1_12)
+    "1.11" -> painterResource(R.drawable.update_1_11)
+    "1.9" -> painterResource(R.drawable.update_1_9)
+    "1.6" -> painterResource(R.drawable.update_1_6)
+    else -> null
 }
 
 @Composable
