@@ -384,28 +384,32 @@ private fun VersionHeader(
                         onClick = {
                             onVersionFilterChange(versionFilter.copy(release = versionFilter.release.not()))
                         },
-                        text = stringResource(R.string.download_game_type_release)
+                        text = stringResource(R.string.download_game_type_release),
+                        icon = painterResource(R.drawable.img_minecraft)
                     )
                     VersionTypeItem(
                         selected = versionFilter.snapshot,
                         onClick = {
                             onVersionFilterChange(versionFilter.copy(snapshot = versionFilter.snapshot.not()))
                         },
-                        text = stringResource(R.string.download_game_type_snapshot)
+                        text = stringResource(R.string.download_game_type_snapshot),
+                        icon = painterResource(R.drawable.img_command_block)
                     )
                     VersionTypeItem(
                         selected = versionFilter.aprilFools,
                         onClick = {
                             onVersionFilterChange(versionFilter.copy(aprilFools = versionFilter.aprilFools.not()))
                         },
-                        text = stringResource(R.string.download_game_type_april_fools)
+                        text = stringResource(R.string.download_game_type_april_fools),
+                        icon = painterResource(R.drawable.img_diamond_block)
                     )
                     VersionTypeItem(
                         selected = versionFilter.old,
                         onClick = {
                             onVersionFilterChange(versionFilter.copy(old = versionFilter.old.not()))
                         },
-                        text = stringResource(R.string.download_game_type_old)
+                        text = stringResource(R.string.download_game_type_old),
+                        icon = painterResource(R.drawable.img_old_grass_block)
                     )
                 }
 
@@ -470,13 +474,24 @@ private fun VersionHeader(
                         )
                     }
 
-                    IconButton(
-                        onClick = onRefreshClick
+                    Surface(
+                        onClick = onRefreshClick,
+                        shape = MaterialTheme.shapes.large,
+                        color = itemContainerColor,
+                        contentColor = itemContentColor,
+                        tonalElevation = 0.dp,
+                        shadowElevation = 0.dp
                     ) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_refresh),
-                            contentDescription = stringResource(R.string.generic_refresh)
-                        )
+                        Box(
+                            modifier = Modifier.size(44.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_refresh),
+                                contentDescription = stringResource(R.string.generic_refresh),
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -494,6 +509,7 @@ private fun VersionTypeItem(
     selected: Boolean,
     text: String,
     onClick: () -> Unit,
+    icon: Painter? = null,
     modifier: Modifier = Modifier
 ) {
     CheckChip(
@@ -501,7 +517,20 @@ private fun VersionTypeItem(
         selected = selected,
         onClick = onClick,
         label = {
-            Text(text)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(7.dp)
+            ) {
+                icon?.let { painter ->
+                    Image(
+                        painter = painter,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                        contentScale = ContentScale.Fit
+                    )
+                }
+                Text(text)
+            }
         },
     )
 }
@@ -660,6 +689,20 @@ private fun VersionFamilyCard(
                     text = if (newest.type == MinecraftVersion.Type.Release) {
                         "Minecraft $family"
                     } else newest.version.id,
+                    modifier = Modifier.drawBehind {
+                        // Brilho branco bem discreto somente atrás do título.
+                        drawRoundRect(
+                            brush = Brush.radialGradient(
+                                colors = listOf(
+                                    Color.White.copy(alpha = 0.10f),
+                                    Color.Transparent
+                                ),
+                                center = center,
+                                radius = size.maxDimension * 0.75f
+                            ),
+                            cornerRadius = androidx.compose.ui.geometry.CornerRadius(8.dp.toPx())
+                        )
+                    },
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = Color.White,
