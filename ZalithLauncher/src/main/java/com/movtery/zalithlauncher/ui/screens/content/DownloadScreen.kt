@@ -19,6 +19,8 @@
 package com.movtery.zalithlauncher.ui.screens.content
 
 import androidx.compose.foundation.basicMarquee
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -31,6 +33,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
@@ -43,7 +46,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavBackStack
@@ -182,47 +187,92 @@ private fun TabMenu(
     )
 
     val scrollState = rememberScrollState()
-    Column(
+    Row(
         modifier = modifier
-            .fadeEdge(scrollState)
-            .width(IntrinsicSize.Min)
-            .padding(start = 8.dp)
             .offset { IntOffset(x = xOffset.roundToPx(), y = 0) }
-            .verticalScroll(scrollState),
-        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(modifier = Modifier.height(12.dp))
-        downloadsList.forEach { item ->
-            if (item.division) {
-                HorizontalDivider(
-                    modifier = Modifier
-                        .padding(vertical = 12.dp)
-                        .fillMaxWidth(0.4f)
-                        .alpha(0.4f),
-                    color = MaterialTheme.colorScheme.onSurface
+        Column(
+            modifier = Modifier
+                .fillMaxHeight()
+                .width(148.dp)
+                .clip(RoundedCornerShape(topEnd = 18.dp, bottomEnd = 18.dp))
+                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.96f))
+                .border(
+                    1.dp,
+                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f),
+                    RoundedCornerShape(topEnd = 18.dp, bottomEnd = 18.dp)
                 )
-            }
+                .fadeEdge(scrollState)
+                .padding(horizontal = 8.dp)
+                .verticalScroll(scrollState),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Spacer(modifier = Modifier.height(12.dp))
 
-            NavigationRailItem(
-                selected = backScreenViewModel.downloadScreen.currentKey == item.key,
-                onClick = {
-                    backStack.navigateOnce(item.key)
-                },
-                icon = {
-                    item.icon()
-                },
-                label = {
-                    Text(
-                        modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE),
-                        text = stringResource(item.textRes),
-                        maxLines = 1,
-                        style = MaterialTheme.typography.labelMedium
+            downloadsList.forEach { item ->
+                if (item.division) {
+                    HorizontalDivider(
+                        modifier = Modifier
+                            .padding(horizontal = 10.dp, vertical = 10.dp)
+                            .fillMaxWidth()
+                            .alpha(0.45f),
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.32f)
                     )
                 }
-            )
 
-            Spacer(modifier = Modifier.height(8.dp))
+                val selected =
+                    backScreenViewModel.downloadScreen.currentKey == item.key
+                val itemShape = RoundedCornerShape(14.dp)
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(itemShape)
+                        .background(
+                            if (selected)
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.70f)
+                            else Color.Transparent
+                        )
+                        .border(
+                            width = if (selected) 1.5.dp else 1.dp,
+                            color = if (selected)
+                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.42f)
+                            else
+                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
+                            shape = itemShape
+                        )
+                ) {
+                    NavigationRailItem(
+                        modifier = Modifier.fillMaxWidth(),
+                        selected = selected,
+                        onClick = { backStack.navigateOnce(item.key) },
+                        icon = { item.icon() },
+                        label = {
+                            Text(
+                                modifier = Modifier.basicMarquee(
+                                    iterations = Int.MAX_VALUE
+                                ),
+                                text = stringResource(item.textRes),
+                                maxLines = 1,
+                                style = MaterialTheme.typography.labelMedium
+                            )
+                        }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+            }
         }
+
+        // Separador discreto entre o menu lateral e o conteúdo.
+        Box(
+            modifier = Modifier
+                .fillMaxHeight()
+                .width(1.dp)
+                .background(
+                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.20f)
+                )
+        )
     }
 }
 
