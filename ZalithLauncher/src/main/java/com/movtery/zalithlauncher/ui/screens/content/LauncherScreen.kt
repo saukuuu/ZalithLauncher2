@@ -58,6 +58,8 @@ import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInParent
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalContext
+import com.movtery.zalithlauncher.ui.screens.content.home.LauncherDashboardStats
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalUriHandler
@@ -121,6 +123,7 @@ fun LauncherScreen(
     onOpenLink: (String) -> Unit,
     startGuideOnce: (GuideKeys.Keys) -> Unit,
 ) {
+    val dashboardContext = LocalContext.current
     LaunchedEffect(Unit) {
         //发起新手引导
         startGuideOnce(GuideKeys.Main)
