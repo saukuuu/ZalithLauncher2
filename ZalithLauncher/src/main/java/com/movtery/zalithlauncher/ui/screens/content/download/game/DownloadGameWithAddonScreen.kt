@@ -21,6 +21,18 @@ package com.movtery.zalithlauncher.ui.screens.content.download.game
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -266,6 +278,9 @@ fun DownloadGameWithAddonScreen(
                 currentAddon = viewModel.currentAddon,
                 refreshIcon = viewModel.refreshIcon,
                 refreshErrorCheck = refreshErrorCheck,
+                onVanilla = { customVersionName ->
+                    onInstall(GameDownloadInfo(gameVersion = key.gameVersion, customVersionName = customVersionName))
+                },
                 onInstall = { customVersionName ->
                     onInstall(
                         GameDownloadInfo(
@@ -532,6 +547,58 @@ fun DownloadGameWithAddonScreen(
     }
 }
 
+private data class UpdateArtwork(val drawable: Int, val theme: String, val release: String)
+
+private fun artworkFor(version: String): UpdateArtwork? {
+    val minor = version.split('.').getOrNull(1)?.toIntOrNull() ?: return null
+    if (!version.startsWith("1.")) return null
+    return when (minor) {
+        21 -> UpdateArtwork(R.drawable.update_121, "Tricky Trials", "13 de junho de 2024")
+        20 -> UpdateArtwork(R.drawable.update_120, "Trails & Tales", "7 de junho de 2023")
+        19 -> UpdateArtwork(R.drawable.update_119, "The Wild Update", "7 de junho de 2022")
+        18 -> UpdateArtwork(R.drawable.update_118, "Caves & Cliffs: Part II", "30 de novembro de 2021")
+        17 -> UpdateArtwork(R.drawable.update_117, "Caves & Cliffs: Part I", "8 de junho de 2021")
+        15 -> UpdateArtwork(R.drawable.update_115, "Buzzy Bees", "10 de dezembro de 2019")
+        16 -> UpdateArtwork(R.drawable.update_116, "Nether Update", "23 de junho de 2020")
+        14 -> UpdateArtwork(R.drawable.update_114, "Village & Pillage", "23 de abril de 2019")
+        12 -> UpdateArtwork(R.drawable.update_112, "World of Color Update", "7 de junho de 2017")
+        11 -> UpdateArtwork(R.drawable.update_111, "Exploration Update", "14 de novembro de 2016")
+        9 -> UpdateArtwork(R.drawable.update_19, "Combat Update", "29 de fevereiro de 2016")
+        8 -> UpdateArtwork(R.drawable.update_18, "Bountiful Update", "2 de setembro de 2014")
+        else -> null
+    }
+}
+
+@Composable
+private fun VersionArtworkCard(version: String) {
+    val artwork = artworkFor(version)
+    val shape = RoundedCornerShape(16.dp)
+    Box(
+        modifier = Modifier.fillMaxWidth().height(180.dp).clip(shape).background(cardColor())
+    ) {
+        if (artwork != null) {
+            Image(
+                painter = painterResource(artwork.drawable),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+        Box(
+            Modifier.fillMaxSize().background(
+                Brush.horizontalGradient(listOf(Color.Black.copy(alpha = 0.78f), Color.Transparent))
+            )
+        )
+        Column(modifier = Modifier.align(Alignment.BottomStart).padding(20.dp)) {
+            Text("Minecraft $version", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+            if (artwork != null) {
+                Text(artwork.theme, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+                Text("Lançado em ${artwork.release}", color = Color.White.copy(alpha = 0.9f), fontSize = 12.sp)
+            }
+        }
+    }
+}
+
 @Composable
 private fun ScreenHeader(
     modifier: Modifier = Modifier,
@@ -541,9 +608,12 @@ private fun ScreenHeader(
     currentAddon: CurrentAddon,
     refreshIcon: Any? = null,
     refreshErrorCheck: Any? = null,
+    onVanilla: (String) -> Unit = {},
     onInstall: (String) -> Unit = {}
 ) {
     Column(modifier = modifier) {
+        VersionArtworkCard(gameVersion)
+        Spacer(Modifier.height(14.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Spacer(modifier = Modifier.width(8.dp))
 
@@ -641,6 +711,30 @@ private fun ScreenHeader(
             }
         }
 
+        Spacer(Modifier.height(10.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(14.dp))
+                .background(itemContainerColor)
+                .border(0.6.dp, Color.White.copy(alpha = 0.55f), RoundedCornerShape(14.dp))
+                .clickable(enabled = !isError) { onVanilla(nameValue) }
+                .padding(horizontal = 16.dp, vertical = 12.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Image(
+                    painter = painterResource(R.drawable.img_minecraft),
+                    contentDescription = null,
+                    modifier = Modifier.size(34.dp)
+                )
+                Spacer(Modifier.width(14.dp))
+                Column {
+                    Text("Vanilla", fontWeight = FontWeight.SemiBold, color = itemContentColor)
+                    Text("Instalar Minecraft sem mods", color = itemContentColor.copy(alpha = 0.7f), fontSize = 12.sp)
+                }
+            }
+        }
+        Spacer(Modifier.height(12.dp))
         HorizontalDivider(
             modifier = Modifier.fillMaxWidth(),
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
