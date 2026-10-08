@@ -576,6 +576,7 @@ fun DownloadGameWithAddonScreen(
 private data class UpdateArtwork(val drawable: Int, val theme: String, val release: String)
 
 private fun artworkFor(version: String): UpdateArtwork? {
+    if (version.startsWith("26.3")) return UpdateArtwork(R.drawable.update_263, "Wilderness Bound", "15 de setembro de 2026")
     if (!version.startsWith("1.")) return null
     val minor = version.split('.').getOrNull(1)?.toIntOrNull() ?: return null
     return when (minor) {
@@ -590,7 +591,7 @@ private fun artworkFor(version: String): UpdateArtwork? {
         12 -> UpdateArtwork(R.drawable.update_112, "World of Color Update", "7 de junho de 2017")
         11 -> UpdateArtwork(R.drawable.update_111, "Exploration Update", "14 de novembro de 2016")
         9 -> UpdateArtwork(R.drawable.update_19, "Combat Update", "29 de fevereiro de 2016")
-        8 -> UpdateArtwork(R.drawable.update_18, "Bountiful Update", "2 de setembro de 2014")
+        // Sem imagem cadastrada para 1.7, 1.8 e 1.10. Os metadados ficam em releaseInfo.
         else -> null
     }
 }
@@ -599,6 +600,13 @@ private fun artworkFor(version: String): UpdateArtwork? {
 private fun VersionArtworkCard(version: String) {
     val artwork = artworkFor(version)
     val releaseInfo = when {
+        version.startsWith("26.3") -> "Wilderness Bound" to "15 de setembro de 2026"
+        version.startsWith("26.2") -> "Chaos Cubed" to "16 de junho de 2026"
+        version.startsWith("26.1") -> "Tiny Takeover" to "24 de março de 2026"
+        version.startsWith("1.7") -> "The Update that Changed the World" to "25 de outubro de 2013"
+        version.startsWith("1.8") -> "Bountiful Update" to "2 de setembro de 2014"
+        version.startsWith("1.10") -> "Frostburn Update" to "8 de junho de 2016"
+        version.startsWith("1.13") -> "Update Aquatic" to "18 de julho de 2018"
         version.startsWith("1.21.11") -> "Mounts of Mayhem" to "9 de dezembro de 2025"
         version.startsWith("1.21.9") || version.startsWith("1.21.10") -> "The Copper Age" to "30 de setembro de 2025"
         version.startsWith("1.21.6") || version.startsWith("1.21.7") || version.startsWith("1.21.8") -> "Chase the Skies" to "17 de junho de 2025"
@@ -608,12 +616,12 @@ private fun VersionArtworkCard(version: String) {
         else -> null
     }
     val shape = RoundedCornerShape(16.dp)
-    // O fundo ilustrado de reserva evita um banner vazio em versões sem arte cadastrada.
+    // Fundo neutro para versões sem imagem (1.7, 1.8, 1.10).
     Box(
         modifier = Modifier.fillMaxWidth().height(184.dp).clip(shape)
             .background(
                 Brush.linearGradient(
-                    listOf(Color(0xFF122C29), Color(0xFF41654C), Color(0xFF7B9C71))
+                    listOf(Color(0xFF15191D), Color(0xFF303840))
                 )
             )
     ) {
@@ -623,16 +631,6 @@ private fun VersionArtworkCard(version: String) {
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
-            )
-        } else {
-            // Cenário abstrato inspirado em blocos, sem dependência de novos drawables.
-            Box(
-                Modifier.align(Alignment.BottomEnd).fillMaxWidth(0.7f).height(88.dp)
-                    .background(Color(0xFF264C37).copy(alpha = 0.55f))
-            )
-            Box(
-                Modifier.align(Alignment.BottomEnd).fillMaxWidth(0.42f).height(48.dp)
-                    .background(Color(0xFF183A2B).copy(alpha = 0.75f))
             )
         }
         Box(
@@ -645,7 +643,7 @@ private fun VersionArtworkCard(version: String) {
         Column(modifier = Modifier.align(Alignment.BottomStart).padding(20.dp)) {
             Text("Minecraft $version", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold)
             val theme = releaseInfo?.first ?: artwork?.theme ?: when {
-                version.startsWith("26.") -> "Tema da atualização não cadastrado"
+                version.startsWith("26.") -> "Atualização Minecraft ${version.substringBeforeLast('.', version)}"
                 version.startsWith("1.13") -> "Update Aquatic"
                 version.startsWith("1.10") -> "Frostburn Update"
                 else -> "Minecraft Java Edition"
@@ -713,74 +711,8 @@ private fun ScreenHeader(
         }
 
 
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Spacer(modifier = Modifier.width(8.dp))
-
-            VersionIconPreview(
-                modifier = Modifier.size(28.dp),
-                currentAddon = currentAddon,
-                refreshIcon = refreshIcon
-            )
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(vertical = 8.dp)
-                    .animateContentSize(animationSpec = getAnimateTween())
-            ) {
-                SimpleTextInputField(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(all = 4.dp),
-                    value = nameValue,
-                    onValueChange = {
-                        nameValue = it
-                        if (!editedByUser) {
-                            //用户已经对版本名称进行了编辑
-                            editedByUser = true
-                        }
-                    },
-                    color = itemContainerColor,
-                    contentColor = itemContentColor,
-                    singleLine = true,
-                    hint = {
-                        Text(
-                            text = stringResource(R.string.download_game_version_name),
-                            style = TextStyle(color = itemContentColor).copy(fontSize = 12.sp)
-                        )
-                    }
-                )
-
-                if (isError) {
-                    val message = filenameInvalidMessage
-                        ?: (if (isVersionExists) existsError else emptyError)
-
-                    Text(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 8.dp),
-                        text = message,
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.labelMedium
-                    )
-                }
-            }
-
-            IconButton(
-                onClick = {
-                    if (!isError) {
-                        onInstall(nameValue)
-                    }
-                }
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_download_2_filled),
-                    contentDescription = stringResource(R.string.download_install)
-                )
-            }
-        }
+        // A barra original de nome/ícone/download foi removida a pedido do usuário.
+        // nameValue continua controlando o nome usado ao instalar Vanilla ou loaders.
 
         Spacer(Modifier.height(10.dp))
         Box(
