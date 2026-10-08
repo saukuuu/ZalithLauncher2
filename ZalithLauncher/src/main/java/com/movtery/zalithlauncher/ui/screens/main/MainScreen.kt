@@ -64,6 +64,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import com.movtery.zalithlauncher.ui.screens.content.home.launcherGlow
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -374,7 +375,7 @@ private fun <E: TitledNavKey> TopBar(
 
             Row(
                 modifier = Modifier
-                    .border(1.dp, Color.White.copy(alpha = 0.82f), RoundedCornerShape(12.dp))
+                    .launcherGlow(12.dp, 0.85f)
                     .background(Color(0xFF18242E).copy(alpha = 0.65f), RoundedCornerShape(12.dp))
                     .padding(horizontal = 6.dp)
                     .constrainAs(endButtons) {
