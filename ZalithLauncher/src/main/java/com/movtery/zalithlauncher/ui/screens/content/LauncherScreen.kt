@@ -67,6 +67,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
 import com.movtery.zalithlauncher.ui.screens.content.home.LauncherDashboardStats
+import com.movtery.zalithlauncher.ui.screens.content.home.launcherGlow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalUriHandler
@@ -396,7 +397,7 @@ private fun VersionsContent(
     Column(modifier = modifier) {
         Box(
             modifier = Modifier.fillMaxWidth()
-                .border(1.dp, Color.White.copy(alpha = 0.85f), RoundedCornerShape(14.dp))
+                .launcherGlow(14.dp, 0.9f)
                 .background(Brush.horizontalGradient(listOf(Color(0xFF1C2C37), Color(0xFF493226), Color(0xFF1B2B36))), RoundedCornerShape(14.dp))
                 .padding(vertical = 18.dp),
         ) {
@@ -491,7 +492,7 @@ private fun VersionsContent(
                 .fillMaxWidth()
                 .padding(PaddingValues(horizontal = 12.dp))
                 .padding(bottom = 8.dp)
-                .border(1.dp, Color.White.copy(alpha = 0.9f), RoundedCornerShape(18.dp)),
+                .launcherGlow(18.dp, 1f),
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00D957), contentColor = Color.Black),
             elevation = ButtonDefaults.buttonElevation(defaultElevation = 3.dp),
             onClick = {
@@ -519,7 +520,7 @@ private fun ActionMenuCardContent(
         val accountShape = RoundedCornerShape(17.dp)
         Box(
             modifier = Modifier.weight(1f).fillMaxWidth()
-                .border(1.dp, Color.White.copy(alpha = 0.82f), accountShape)
+                .launcherGlow(17.dp, 0.9f)
                 .background(Color(0xFF26343F).copy(alpha = 0.9f), accountShape)
                 .guideNode(GuideKeys.Main.Step.Account, preferSide = GuideSide.Below),
             contentAlignment = Alignment.Center
