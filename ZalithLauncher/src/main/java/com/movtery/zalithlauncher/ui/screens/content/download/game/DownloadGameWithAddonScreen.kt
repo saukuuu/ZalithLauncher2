@@ -318,25 +318,30 @@ fun DownloadGameWithAddonScreen(
                 Spacer(Modifier)
 
                 AnimatedItem(scope) { yOffset ->
+                    StyledAddonCard {
                     OptiFineList(
                         modifier = Modifier.offset { IntOffset(x = 0, y = yOffset.roundToPx()) },
                         currentAddon = viewModel.currentAddon,
                         onValueChanged = { viewModel.refreshIcon() },
                         addonList = viewModel.addonList
                     ) { viewModel.reloadOptiFine() }
+                    }
                 }
 
                 AnimatedItem(scope) { yOffset ->
+                    StyledAddonCard {
                     ForgeList(
                         modifier = Modifier.offset { IntOffset(x = 0, y = yOffset.roundToPx()) },
                         currentAddon = viewModel.currentAddon,
                         onValueChanged = { viewModel.refreshIcon() },
                         addonList = viewModel.addonList
                     ) { viewModel.reloadForge() }
+                    }
                 }
 
                 if (loaderSupports.isNeoForgeSupports) {
                     AnimatedItem(scope) { yOffset ->
+                        StyledAddonCard {
                         NeoForgeList(
                             modifier = Modifier.offset {
                                 IntOffset(
@@ -348,11 +353,13 @@ fun DownloadGameWithAddonScreen(
                             onValueChanged = { viewModel.refreshIcon() },
                             addonList = viewModel.addonList
                         ) { viewModel.reloadNeoForge() }
+                        }
                     }
                 }
 
                 if (loaderSupports.isCleanroomSupports) {
                     AnimatedItem(scope) { yOffset ->
+                        StyledAddonCard {
                         CleanroomList(
                             modifier = Modifier.offset {
                                 IntOffset(
@@ -364,6 +371,7 @@ fun DownloadGameWithAddonScreen(
                             onValueChanged = { viewModel.refreshIcon() },
                             addonList = viewModel.addonList
                         ) { viewModel.reloadCleanroom() }
+                        }
                     }
                 }
 
@@ -392,6 +400,8 @@ fun DownloadGameWithAddonScreen(
                                 )
                             }
 
+                            StyledAddonCard {
+
                             FabricList(
                                 modifier = Modifier.fillMaxWidth(),
                                 currentAddon = viewModel.currentAddon,
@@ -407,10 +417,13 @@ fun DownloadGameWithAddonScreen(
                                 },
                                 addonList = viewModel.addonList
                             ) { viewModel.reloadFabric() }
+
+                            }
                         }
                     }
 
                     AnimatedItem(scope) { yOffset ->
+                        StyledAddonCard {
                         FabricAPIList(
                             modifier = Modifier.offset {
                                 IntOffset(
@@ -422,6 +435,7 @@ fun DownloadGameWithAddonScreen(
                             onValueChanged = { viewModel.refreshIcon() },
                             addonList = viewModel.addonList
                         ) { viewModel.reloadFabricAPI() }
+                        }
                     }
                 }
 
@@ -450,6 +464,8 @@ fun DownloadGameWithAddonScreen(
                                 )
                             }
 
+                            StyledAddonCard {
+
                             LegacyFabricList(
                                 modifier = Modifier.fillMaxWidth(),
                                 currentAddon = viewModel.currentAddon,
@@ -465,10 +481,13 @@ fun DownloadGameWithAddonScreen(
                                 },
                                 addonList = viewModel.addonList
                             ) { viewModel.reloadLegacyFabric() }
+
+                            }
                         }
                     }
 
                     AnimatedItem(scope) { yOffset ->
+                        StyledAddonCard {
                         LegacyFabricAPIList(
                             modifier = Modifier.offset {
                                 IntOffset(
@@ -480,6 +499,7 @@ fun DownloadGameWithAddonScreen(
                             onValueChanged = { viewModel.refreshIcon() },
                             addonList = viewModel.addonList
                         ) { viewModel.reloadLegacyFabricAPI() }
+                        }
                     }
                 }
 
@@ -508,6 +528,8 @@ fun DownloadGameWithAddonScreen(
                                 )
                             }
 
+                            StyledAddonCard {
+
                             QuiltList(
                                 modifier = Modifier.fillMaxWidth(),
                                 currentAddon = viewModel.currentAddon,
@@ -523,10 +545,13 @@ fun DownloadGameWithAddonScreen(
                                 },
                                 addonList = viewModel.addonList
                             ) { viewModel.reloadQuilt() }
+
+                            }
                         }
                     }
 
                     AnimatedItem(scope) { yOffset ->
+                        StyledAddonCard {
                         QuiltAPIList(
                             modifier = Modifier.offset {
                                 IntOffset(
@@ -538,6 +563,7 @@ fun DownloadGameWithAddonScreen(
                             onValueChanged = { viewModel.refreshIcon() },
                             addonList = viewModel.addonList
                         ) { viewModel.reloadQuiltAPI() }
+                        }
                     }
                 }
 
@@ -550,10 +576,10 @@ fun DownloadGameWithAddonScreen(
 private data class UpdateArtwork(val drawable: Int, val theme: String, val release: String)
 
 private fun artworkFor(version: String): UpdateArtwork? {
-    val minor = version.split('.').getOrNull(1)?.toIntOrNull() ?: return null
     if (!version.startsWith("1.")) return null
+    val minor = version.split('.').getOrNull(1)?.toIntOrNull() ?: return null
     return when (minor) {
-        21 -> UpdateArtwork(R.drawable.update_121, "Tricky Trials", "13 de junho de 2024")
+        21 -> UpdateArtwork(R.drawable.update_121, "Tricky Trials", "13 de junho de 2024 (versão 1.21)")
         20 -> UpdateArtwork(R.drawable.update_120, "Trails & Tales", "7 de junho de 2023")
         19 -> UpdateArtwork(R.drawable.update_119, "The Wild Update", "7 de junho de 2022")
         18 -> UpdateArtwork(R.drawable.update_118, "Caves & Cliffs: Part II", "30 de novembro de 2021")
@@ -572,9 +598,24 @@ private fun artworkFor(version: String): UpdateArtwork? {
 @Composable
 private fun VersionArtworkCard(version: String) {
     val artwork = artworkFor(version)
+    val releaseInfo = when {
+        version.startsWith("1.21.11") -> "Mounts of Mayhem" to "9 de dezembro de 2025"
+        version.startsWith("1.21.9") || version.startsWith("1.21.10") -> "The Copper Age" to "30 de setembro de 2025"
+        version.startsWith("1.21.6") || version.startsWith("1.21.7") || version.startsWith("1.21.8") -> "Chase the Skies" to "17 de junho de 2025"
+        version.startsWith("1.21.5") -> "Spring to Life" to "25 de março de 2025"
+        version.startsWith("1.21.4") -> "The Garden Awakens" to "3 de dezembro de 2024"
+        version.startsWith("1.21.2") || version.startsWith("1.21.3") -> "Bundles of Bravery" to "22 de outubro de 2024"
+        else -> null
+    }
     val shape = RoundedCornerShape(16.dp)
+    // O fundo ilustrado de reserva evita um banner vazio em versões sem arte cadastrada.
     Box(
-        modifier = Modifier.fillMaxWidth().height(180.dp).clip(shape).background(cardColor())
+        modifier = Modifier.fillMaxWidth().height(184.dp).clip(shape)
+            .background(
+                Brush.linearGradient(
+                    listOf(Color(0xFF122C29), Color(0xFF41654C), Color(0xFF7B9C71))
+                )
+            )
     ) {
         if (artwork != null) {
             Image(
@@ -583,20 +624,49 @@ private fun VersionArtworkCard(version: String) {
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
             )
+        } else {
+            // Cenário abstrato inspirado em blocos, sem dependência de novos drawables.
+            Box(
+                Modifier.align(Alignment.BottomEnd).fillMaxWidth(0.7f).height(88.dp)
+                    .background(Color(0xFF264C37).copy(alpha = 0.55f))
+            )
+            Box(
+                Modifier.align(Alignment.BottomEnd).fillMaxWidth(0.42f).height(48.dp)
+                    .background(Color(0xFF183A2B).copy(alpha = 0.75f))
+            )
         }
         Box(
             Modifier.fillMaxSize().background(
-                Brush.horizontalGradient(listOf(Color.Black.copy(alpha = 0.78f), Color.Transparent))
+                Brush.horizontalGradient(
+                    listOf(Color.Black.copy(alpha = 0.85f), Color.Black.copy(alpha = 0.25f), Color.Transparent)
+                )
             )
         )
         Column(modifier = Modifier.align(Alignment.BottomStart).padding(20.dp)) {
             Text("Minecraft $version", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold)
-            if (artwork != null) {
-                Text(artwork.theme, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
-                Text("Lançado em ${artwork.release}", color = Color.White.copy(alpha = 0.9f), fontSize = 12.sp)
+            val theme = releaseInfo?.first ?: artwork?.theme ?: when {
+                version.startsWith("26.") -> "Tema da atualização não cadastrado"
+                version.startsWith("1.13") -> "Update Aquatic"
+                version.startsWith("1.10") -> "Frostburn Update"
+                else -> "Minecraft Java Edition"
             }
+            Text(theme, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+            Text(
+                (releaseInfo?.second ?: artwork?.release)?.let { "Lançamento: $it" } ?: "Data de lançamento não cadastrada",
+                color = Color.White.copy(alpha = 0.88f), fontSize = 12.sp
+            )
         }
     }
+}
+
+@Composable
+private fun StyledAddonCard(content: @Composable () -> Unit) {
+    val shape = RoundedCornerShape(14.dp)
+    Box(
+        modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
+            .clip(shape)
+            .border(0.6.dp, Color.White.copy(alpha = 0.48f), shape)
+    ) { content() }
 }
 
 @Composable
