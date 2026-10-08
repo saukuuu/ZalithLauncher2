@@ -18,6 +18,12 @@
 
 package com.movtery.zalithlauncher.ui.screens.content
 
+import androidx.compose.foundation.border
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -34,6 +40,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -124,6 +131,11 @@ fun LauncherScreen(
     startGuideOnce: (GuideKeys.Keys) -> Unit,
 ) {
     val dashboardContext = LocalContext.current
+    val trackedLaunch: (Version?) -> Unit = { version ->
+        val actual = version ?: VersionsManager.currentVersion.value
+        LauncherDashboardStats.recordLaunch(dashboardContext, actual?.getVersionName())
+        onLaunchGame(version)
+    }
     LaunchedEffect(Unit) {
         //发起新手引导
         startGuideOnce(GuideKeys.Main)
@@ -205,9 +217,7 @@ fun LauncherScreen(
                             .weight(ContentWeight)
                             .offset { IntOffset(x = dragState.previewShift.value.roundToInt(), y = 0) },
                         isVisible = isVisible,
-                        onLaunchGame = { version ->
-                            onLaunchGame(version)
-                        },
+                        onLaunchGame = trackedLaunch,
                         onOpenVersionSettings = navigateToVersions
                     )
                 }
@@ -238,7 +248,7 @@ fun LauncherScreen(
                         isVisible = isVisible,
                         isTaller = isActionMenuTaller,
                         dockedSide = dockedSide,
-                        onLaunchGame = onLaunchGame,
+                        onLaunchGame = trackedLaunch,
                         swapTargetValue = if (dockedSide == ActionMenuSide.END) 40.dp else (-40).dp,
                         pickUpScale = { dragState.scale },
                         toAccountManageScreen = toAccountManageScreen,
@@ -385,7 +395,10 @@ private fun VersionsContent(
     var versionManagerRow by remember { mutableStateOf<LayoutCoordinates?>(null) }
     Column(modifier = modifier) {
         Box(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth()
+                .border(1.dp, Color.White.copy(alpha = 0.85f), RoundedCornerShape(14.dp))
+                .background(Brush.horizontalGradient(listOf(Color(0xFF1C2C37), Color(0xFF493226), Color(0xFF1B2B36))), RoundedCornerShape(14.dp))
+                .padding(vertical = 18.dp),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -473,19 +486,20 @@ private fun VersionsContent(
             }
         }
 
-        ScalingActionButton(
+        Button(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(PaddingValues(horizontal = 12.dp))
-                .padding(bottom = 8.dp),
-            elevation = ButtonDefaults.buttonElevation(defaultElevation = 1.dp),
+                .padding(bottom = 8.dp)
+                .border(1.dp, Color.White.copy(alpha = 0.9f), RoundedCornerShape(18.dp)),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00D957), contentColor = Color.Black),
+            elevation = ButtonDefaults.buttonElevation(defaultElevation = 3.dp),
             onClick = {
                 onLaunchGame(null)
             },
-            content = {
-                MarqueeText(text = stringResource(R.string.main_launch_game))
-            }
-        )
+        ) {
+            Text(text = "Jogar", color = Color.Black, style = MaterialTheme.typography.titleMedium)
+        }
     }
 }
 
@@ -498,44 +512,26 @@ private fun ActionMenuCardContent(
     toVersionManageScreen: () -> Unit,
     toVersionSettingsScreen: () -> Unit,
 ) {
-    BackgroundCard(
-        modifier = Modifier
-            .actionMenuDragAnchor()
-            .guideNode(GuideKeys.Main.Step.CardDrag)
-            .then(modifier),
-        shape = MaterialTheme.shapes.extraLarge
+    Column(
+        modifier = modifier.actionMenuDragAnchor().guideNode(GuideKeys.Main.Step.CardDrag),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        ConstraintLayout(
-            modifier = Modifier.fillMaxSize()
+        val accountShape = RoundedCornerShape(17.dp)
+        Box(
+            modifier = Modifier.weight(1f).fillMaxWidth()
+                .border(1.dp, Color.White.copy(alpha = 0.82f), accountShape)
+                .background(Color(0xFF26343F).copy(alpha = 0.9f), accountShape)
+                .guideNode(GuideKeys.Main.Step.Account, preferSide = GuideSide.Below),
+            contentAlignment = Alignment.Center
         ) {
-            val (accountAvatar, versionManagerLayout) = createRefs()
-
-            AccountAvatarCenter(
-                modifier = Modifier
-                    .constrainAs(accountAvatar) {
-                        top.linkTo(parent.top)
-                        bottom.linkTo(versionManagerLayout.top)
-                        start.linkTo(parent.start)
-                        end.linkTo(parent.end)
-                    }.guideNode(
-                        key = GuideKeys.Main.Step.Account,
-                        preferSide = GuideSide.Below
-                    ),
-                account = account,
-                onClick = toAccountManageScreen
-            )
-
-            VersionsContent(
-                modifier = Modifier.constrainAs(versionManagerLayout) {
-                    start.linkTo(parent.start)
-                    end.linkTo(parent.end)
-                    bottom.linkTo(parent.bottom)
-                },
-                onLaunchGame = onLaunchGame,
-                toVersionManageScreen = toVersionManageScreen,
-                toVersionSettingsScreen = toVersionSettingsScreen,
-            )
+            AccountAvatarCenter(account = account, onClick = toAccountManageScreen)
         }
+        VersionsContent(
+            modifier = Modifier.fillMaxWidth(),
+            onLaunchGame = onLaunchGame,
+            toVersionManageScreen = toVersionManageScreen,
+            toVersionSettingsScreen = toVersionSettingsScreen
+        )
     }
 }
 
