@@ -125,31 +125,41 @@ object HomeCards {
         val context = LocalContext.current
         val stats = LauncherDashboardStats.read(context)
         val installed by VersionsManager.versions.collectAsStateWithLifecycle()
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                DashboardTile("Horas Jogadas", "Ainda não monitoradas", "O launcher precisa medir o encerramento das sessões", Modifier.weight(1f))
-                DashboardTile("Novidades", "Zalith Launcher 2", "Painel inicial personalizado", Modifier.weight(1f))
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                DashboardTile("Última Partida", stats.lastVersion ?: "Nenhuma registrada", stats.lastDate ?: "Inicie um jogo para registrar", Modifier.weight(1f))
-                DashboardTile("Estatísticas", "${stats.launches} inicializações", "${installed.size} versões instaladas", Modifier.weight(1f))
-            }
+        Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+            DashboardTile("Horas Jogadas", "Tempo de jogo ainda não registrado", "A duração real depende da integração com o encerramento do Minecraft.", "◷")
+            DashboardTile("Novidades", "Zalith Launcher 2", "Seu painel inicial está pronto. Notícias online ainda não integradas.", "▤")
+            DashboardTile("Última Partida", stats.lastVersion ?: "Nenhuma partida registrada", stats.lastDate?.let { "Última inicialização: $it" } ?: "Inicie uma versão para registrar a atividade.", "▶")
+            DashboardTile("Estatísticas", "${stats.launches} inicializações  •  ${installed.size} versões instaladas", "Versão mais iniciada: ${stats.mostPlayedVersion ?: "Nenhuma"}  •  Versões diferentes iniciadas: ${stats.uniqueVersions}", "▥")
         }
     }
 
     @Composable
-    private fun DashboardTile(title: String, value: String, detail: String, modifier: Modifier = Modifier) {
-        Column(
-            modifier = modifier
-                .border(0.8.dp, Color.White.copy(alpha = 0.65f), RoundedCornerShape(10.dp))
-                .background(Color(0xFF242B33).copy(alpha = 0.92f), RoundedCornerShape(10.dp))
-                .padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(7.dp)
+    private fun DashboardTile(title: String, value: String, detail: String, symbol: String) {
+        val shape = RoundedCornerShape(12.dp)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(1.dp, Color.White.copy(alpha = 0.75f), shape)
+                .background(Color(0xFF1B2A36).copy(alpha = 0.94f), shape)
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Text(title, style = MaterialTheme.typography.titleSmall, color = Color.White)
-            Text(value, style = MaterialTheme.typography.titleMedium, color = Color.White)
-            Text(detail, style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.75f))
+            androidx.compose.material3.Surface(
+                shape = RoundedCornerShape(9.dp),
+                color = Color(0xFF344455),
+                modifier = Modifier.size(48.dp)
+            ) {
+                androidx.compose.foundation.layout.Box(contentAlignment = Alignment.Center) {
+                    Text(symbol, color = Color(0xFFB5D6FF), style = MaterialTheme.typography.headlineMedium)
+                }
+            }
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(title, style = MaterialTheme.typography.titleMedium, color = Color.White)
+                Text(value, style = MaterialTheme.typography.bodyMedium, color = Color.White)
+                Text(detail, style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.78f))
+            }
+            Text("›", color = Color.White.copy(alpha = 0.85f), style = MaterialTheme.typography.headlineMedium)
         }
     }
-
 }
