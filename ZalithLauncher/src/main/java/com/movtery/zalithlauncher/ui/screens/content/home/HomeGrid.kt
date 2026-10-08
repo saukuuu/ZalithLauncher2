@@ -132,16 +132,15 @@ fun HomeGrid(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(scrollState)
-                .padding(6.dp),
+                .padding(horizontal = 6.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             val systemCards = HomeCards.systemCards()
             if (!systemCards.isEmpty()) {
                 Column(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 6.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                        .fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     systemCards.forEach { systemCard ->
                         key(systemCard.id) {
