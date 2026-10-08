@@ -27,6 +27,9 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.border
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -59,6 +62,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.painter.Painter
@@ -340,7 +344,7 @@ private fun <E: TitledNavKey> TopBar(
                 if (parent == null) {
                     if (festivals.isEmpty()) {
                         Text(
-                            text = BuildKeys.LAUNCHER_IDENTIFIER,
+                            text = "Zalith Launcher 2",
                             style = style,
                             softWrap = softWarp,
                             maxLines = maxLines
@@ -370,6 +374,9 @@ private fun <E: TitledNavKey> TopBar(
 
             Row(
                 modifier = Modifier
+                    .border(1.dp, Color.White.copy(alpha = 0.82f), RoundedCornerShape(12.dp))
+                    .background(Color(0xFF18242E).copy(alpha = 0.65f), RoundedCornerShape(12.dp))
+                    .padding(horizontal = 6.dp)
                     .constrainAs(endButtons) {
                         top.linkTo(parent.top)
                         bottom.linkTo(parent.bottom)
