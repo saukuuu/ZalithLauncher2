@@ -614,6 +614,35 @@ private fun ScreenHeader(
     Column(modifier = modifier) {
         VersionArtworkCard(gameVersion)
         Spacer(Modifier.height(14.dp))
+        var nameValue by remember { mutableStateOf(gameVersion) }
+        //用户是否对版本名称进行过编辑
+        var editedByUser by remember { mutableStateOf(false) }
+
+        AutoChangeVersionName(
+            gameVersion = gameVersion,
+            currentAddon = currentAddon,
+            editedByUser = editedByUser,
+            changeValue = {
+                nameValue = it
+            }
+        )
+
+        val emptyError = stringResource(R.string.generic_cannot_empty)
+        val existsError = stringResource(R.string.versions_manage_install_exists)
+
+        val filenameInvalidMessage = key(nameValue) {
+            isFilenameInvalid(nameValue)
+        }
+        //目标版本已存在时，阻止安装
+        val isVersionExists = remember(nameValue, refreshErrorCheck) {
+            isVersionExists(nameValue, true)
+        }
+
+        val isError = remember(nameValue, refreshErrorCheck) {
+            nameValue.isEmpty() || filenameInvalidMessage != null || isVersionExists
+        }
+
+
         Row(verticalAlignment = Alignment.CenterVertically) {
             Spacer(modifier = Modifier.width(8.dp))
 
@@ -622,34 +651,6 @@ private fun ScreenHeader(
                 currentAddon = currentAddon,
                 refreshIcon = refreshIcon
             )
-
-            var nameValue by remember { mutableStateOf(gameVersion) }
-            //用户是否对版本名称进行过编辑
-            var editedByUser by remember { mutableStateOf(false) }
-
-            AutoChangeVersionName(
-                gameVersion = gameVersion,
-                currentAddon = currentAddon,
-                editedByUser = editedByUser,
-                changeValue = {
-                    nameValue = it
-                }
-            )
-
-            val emptyError = stringResource(R.string.generic_cannot_empty)
-            val existsError = stringResource(R.string.versions_manage_install_exists)
-
-            val filenameInvalidMessage = key(nameValue) {
-                isFilenameInvalid(nameValue)
-            }
-            //目标版本已存在时，阻止安装
-            val isVersionExists = remember(nameValue, refreshErrorCheck) {
-                isVersionExists(nameValue, true)
-            }
-
-            val isError = remember(nameValue, refreshErrorCheck) {
-                nameValue.isEmpty() || filenameInvalidMessage != null || isVersionExists
-            }
 
             Spacer(modifier = Modifier.width(12.dp))
 
