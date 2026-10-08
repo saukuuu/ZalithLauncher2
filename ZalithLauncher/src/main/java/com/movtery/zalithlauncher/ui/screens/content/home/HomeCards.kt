@@ -20,6 +20,21 @@ package com.movtery.zalithlauncher.ui.screens.content.home
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.border
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.movtery.zalithlauncher.game.version.installed.VersionsManager
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
@@ -73,6 +88,7 @@ object HomeCards {
         if (BuildConfig.DEBUG) {
             add(debugWarningCard())
         }
+        add(dashboardCard())
     }
 
     /**
@@ -105,4 +121,35 @@ object HomeCards {
             }
         }
     }
+    private fun dashboardCard() = SystemCard(id = "system_dashboard") {
+        val context = LocalContext.current
+        val stats = LauncherDashboardStats.read(context)
+        val installed by VersionsManager.versions.collectAsStateWithLifecycle()
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                DashboardTile("Horas Jogadas", "Ainda não monitoradas", "O launcher precisa medir o encerramento das sessões", Modifier.weight(1f))
+                DashboardTile("Novidades", "Zalith Launcher 2", "Painel inicial personalizado", Modifier.weight(1f))
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                DashboardTile("Última Partida", stats.lastVersion ?: "Nenhuma registrada", stats.lastDate ?: "Inicie um jogo para registrar", Modifier.weight(1f))
+                DashboardTile("Estatísticas", "${stats.launches} inicializações", "${installed.size} versões instaladas", Modifier.weight(1f))
+            }
+        }
+    }
+
+    @Composable
+    private fun DashboardTile(title: String, value: String, detail: String, modifier: Modifier = Modifier) {
+        Column(
+            modifier = modifier
+                .border(0.8.dp, Color.White.copy(alpha = 0.65f), RoundedCornerShape(10.dp))
+                .background(Color(0xFF242B33).copy(alpha = 0.92f), RoundedCornerShape(10.dp))
+                .padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(7.dp)
+        ) {
+            Text(title, style = MaterialTheme.typography.titleSmall, color = Color.White)
+            Text(value, style = MaterialTheme.typography.titleMedium, color = Color.White)
+            Text(detail, style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.75f))
+        }
+    }
+
 }
