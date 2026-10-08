@@ -27,7 +27,13 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.border
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.clickable
@@ -62,7 +68,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import com.movtery.zalithlauncher.ui.screens.content.home.launcherGlow
 import androidx.compose.ui.graphics.Shape
@@ -77,12 +82,12 @@ import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
-import com.movtery.zalithlauncher.BuildKeys
 import com.movtery.zalithlauncher.R
 import com.movtery.zalithlauncher.coroutine.Task
 import com.movtery.zalithlauncher.coroutine.TaskSystem
 import com.movtery.zalithlauncher.game.version.installed.Version
 import com.movtery.zalithlauncher.path.PathManager
+import com.movtery.zalithlauncher.setting.enums.ActionMenuSide
 import com.movtery.zalithlauncher.setting.AllSettings
 import com.movtery.zalithlauncher.ui.AndroidStringText
 import com.movtery.zalithlauncher.ui.androidText
@@ -170,12 +175,23 @@ fun MainScreen(
 
     Surface(
         modifier = Modifier.fillMaxSize(),
-        color = backgroundColor,
-        contentColor = onBackgroundColor()
+        color = if (inLauncherScreen) Color(0xFF17232D) else backgroundColor,
+        contentColor = if (inLauncherScreen) Color(0xFFEEF2F6) else onBackgroundColor()
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .drawBehind {
+                    if (inLauncherScreen) {
+                        val menuAtStart = AllSettings.launcherActionMenuSide.state == ActionMenuSide.START
+                        val rtl = layoutDirection == LayoutDirection.Rtl
+                        val menuOnLeft = if (rtl) !menuAtStart else menuAtStart
+                        val x = if (menuOnLeft) size.width * 0.3f + 6.dp.toPx() else size.width * 0.7f - 6.dp.toPx()
+                        drawLine(Color.White.copy(alpha = 0.05f), Offset(x, 0f), Offset(x, size.height), 5.dp.toPx())
+                        drawLine(Color.White.copy(alpha = 0.08f), Offset(x, 0f), Offset(x, size.height), 2.dp.toPx())
+                        drawLine(Color.White.copy(alpha = 0.70f), Offset(x, 0f), Offset(x, size.height), 0.55.dp.toPx())
+                    }
+                }
         ) {
             TopBar(
                 modifier = Modifier
@@ -185,7 +201,7 @@ fun MainScreen(
                 inLauncherScreen = inLauncherScreen,
                 taskRunning = tasks.isEmpty(),
                 isTasksExpanded = isTaskMenuExpanded,
-                contentColor = onBackgroundColor(),
+                contentColor = if (inLauncherScreen) Color.White else onBackgroundColor(),
                 onScreenBack = {
                     screenBackStackModel.mainScreen.backStack.removeFirstOrNull()
                 },
@@ -264,6 +280,19 @@ private fun <E: TitledNavKey> TopBar(
     openFileManager: () -> Unit,
     changeExpandedState: () -> Unit,
 ) {
+    if (inLauncherScreen) {
+        LauncherHomeTopBar(
+            modifier = modifier,
+            showTasks = !(isTasksExpanded || taskRunning),
+            openTasks = changeExpandedState,
+            openFileManager = openFileManager,
+            openMultiplayer = toMultiplayerScreen,
+            openDownloads = toDownloadScreen,
+            openSettings = toSettingsScreen
+        )
+        return
+    }
+
     val festivals = LocalFestivals.current
 
     val inMultiplayerScreen = mainScreenKey is NormalNavKey.Multiplayer
@@ -448,6 +477,61 @@ private fun <E: TitledNavKey> TopBar(
                         if (!inSettingsScreen) toSettingsScreen()
                     },
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun LauncherHomeTopBar(
+    modifier: Modifier,
+    showTasks: Boolean,
+    openTasks: () -> Unit,
+    openFileManager: () -> Unit,
+    openMultiplayer: () -> Unit,
+    openDownloads: () -> Unit,
+    openSettings: () -> Unit
+) {
+    BoxWithConstraints(modifier = modifier) {
+        val menuWidth = maxWidth * 0.3f - 12.dp
+        Row(
+            modifier = Modifier.fillMaxSize().padding(start = 12.dp, end = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(9.dp)
+            ) {
+                Image(
+                    painter = painterResource(R.drawable.ic_launcher_foreground),
+                    contentDescription = null,
+                    modifier = Modifier.size(32.dp).background(Color(0xFF101923), RoundedCornerShape(6.dp))
+                )
+                Text("Zalith Launcher 2", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                if (showTasks) {
+                    IconButton(onClick = openTasks, modifier = Modifier.size(32.dp)) {
+                        Icon(painterResource(R.drawable.ic_assignment_filled), stringResource(R.string.main_task_menu), tint = Color(0xFF00D85A))
+                    }
+                }
+            }
+            Row(
+                modifier = Modifier.width(menuWidth).height(32.dp)
+                    .launcherGlow(11.dp, 1f)
+                    .clip(RoundedCornerShape(11.dp))
+                    .background(Color(0xFF1A2731)),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                val icons = listOf(R.drawable.ic_folder_filled, R.drawable.ic_group_filled, R.drawable.ic_download_2_filled, R.drawable.ic_settings_filled)
+                val labels = listOf("Arquivos", "Multijogador", "Downloads", "Configurações")
+                val actions = listOf(openFileManager, openMultiplayer, openDownloads, openSettings)
+                icons.forEachIndexed { index, icon ->
+                    if (index > 0) Spacer(Modifier.width(0.5.dp).height(15.dp).background(Color.White.copy(alpha = 0.16f)))
+                    IconButton(onClick = actions[index], modifier = Modifier.weight(1f).fillMaxHeight()) {
+                        Icon(painterResource(icon), labels[index], modifier = Modifier.size(21.dp), tint = Color.White)
+                    }
+                }
             }
         }
     }
