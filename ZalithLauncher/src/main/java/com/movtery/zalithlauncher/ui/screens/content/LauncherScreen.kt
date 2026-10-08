@@ -358,7 +358,7 @@ private fun VersionsContent(
         version?.isSummaryValid() == true -> version?.getVersionSummary().orEmpty()
         else -> "Java Edition"
     }
-    val loader = info?.loaderInfo?.loader?.displayName ?: "Vanilla"
+    val loader = info?.primaryLoader?.loader?.displayName ?: "Vanilla"
     val shape = RoundedCornerShape(15.dp)
 
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
