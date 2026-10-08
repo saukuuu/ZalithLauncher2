@@ -54,6 +54,7 @@ import com.movtery.zalithlauncher.BuildKeys
 import com.movtery.zalithlauncher.R
 import com.movtery.zalithlauncher.ui.components.BackgroundCard
 import com.movtery.zalithlauncher.ui.screens.content.home.version.VersionCardContent
+import com.movtery.zalithlauncher.ui.screens.content.home.launcherGlow
 
 /** 系统卡片（不可变更），由启动器自行提供并绘制在网格之外 */
 class SystemCard(val id: String, val content: @Composable () -> Unit)
@@ -126,11 +127,23 @@ object HomeCards {
         val context = LocalContext.current
         val stats = LauncherDashboardStats.read(context)
         val installed by VersionsManager.versions.collectAsStateWithLifecycle()
-        Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
-            DashboardTile("Horas Jogadas", "Tempo de jogo ainda não registrado", "A duração real depende da integração com o encerramento do Minecraft.", "◷")
-            DashboardTile("Novidades", "Zalith Launcher 2", "Seu painel inicial está pronto. Notícias online ainda não integradas.", "▤")
-            DashboardTile("Última Partida", stats.lastVersion ?: "Nenhuma partida registrada", stats.lastDate?.let { "Última inicialização: $it" } ?: "Inicie uma versão para registrar a atividade.", "▶")
-            DashboardTile("Estatísticas", "${stats.launches} inicializações  •  ${installed.size} versões instaladas", "Versão mais iniciada: ${stats.mostPlayedVersion ?: "Nenhuma"}  •  Versões diferentes iniciadas: ${stats.uniqueVersions}", "▥")
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            DashboardTile(
+                "Horas Jogadas", "Total: não monitorado   |   Hoje: não monitorado",
+                "Versão mais iniciada: ${stats.mostPlayedVersion ?: "Nenhuma"}", "◷"
+            )
+            DashboardTile(
+                "Novidades", "Zalith Launcher 2",
+                "Atualizações do Minecraft: notícias online ainda não integradas.", "▤"
+            )
+            DashboardTile(
+                "Última Partida", stats.lastVersion ?: "Nenhuma sessão registrada",
+                stats.lastDate?.let { "Última inicialização: $it" } ?: "Nenhuma inicialização registrada neste dispositivo.", "▶"
+            )
+            DashboardTile(
+                "Estatísticas", "${installed.size} versões instaladas   |   ${stats.launches} inicializações",
+                "Versão mais iniciada: ${stats.mostPlayedVersion ?: "Nenhuma"}   •   Versões iniciadas: ${stats.uniqueVersions}", "▥"
+            )
         }
     }
 
@@ -140,7 +153,7 @@ object HomeCards {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .border(1.dp, Color.White.copy(alpha = 0.75f), shape)
+                .launcherGlow(12.dp, 0.85f)
                 .background(Color(0xFF1B2A36).copy(alpha = 0.94f), shape)
                 .padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
