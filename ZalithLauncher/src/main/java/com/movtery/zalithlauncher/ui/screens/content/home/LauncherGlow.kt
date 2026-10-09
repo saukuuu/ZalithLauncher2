@@ -14,22 +14,30 @@ import androidx.compose.ui.unit.dp
 fun Modifier.launcherGlow(
     radius: Dp = 14.dp,
     strength: Float = 0.75f,
-    tint: Color = Color.White
+    tint: Color = Color.White,
+    lineWidth: Dp = 0.65.dp,
+    haloWidth: Dp = 5.dp
 ): Modifier = drawWithCache {
-    val line = 0.65.dp.toPx()
+    val line = lineWidth.toPx()
     val inset = line / 2f
     val outlineSize = Size((size.width - line).coerceAtLeast(0f), (size.height - line).coerceAtLeast(0f))
     val corner = CornerRadius(radius.toPx(), radius.toPx())
     val opacity = strength.coerceIn(0f, 1f)
+    val layers = listOf(
+        haloWidth.toPx() to 0.035f,
+        (haloWidth * 0.6f).toPx() to 0.055f,
+        (haloWidth * 0.3f).toPx() to 0.10f,
+        line to 0.82f
+    )
     onDrawWithContent {
         drawContent()
-        listOf(5f to 0.035f, 3f to 0.055f, 1.5f to 0.10f, 0.65f to 0.82f).forEach { (width, alpha) ->
+        layers.forEach { (width, alpha) ->
             drawRoundRect(
                 color = tint.copy(alpha = alpha * opacity),
                 topLeft = Offset(inset, inset),
                 size = outlineSize,
                 cornerRadius = corner,
-                style = Stroke(width.dp.toPx())
+                style = Stroke(width)
             )
         }
     }
