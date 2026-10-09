@@ -71,6 +71,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
 import com.movtery.zalithlauncher.ui.screens.content.home.LauncherDashboardStats
+import com.movtery.zalithlauncher.ui.screens.content.home.LauncherUpdateThemes
 import com.movtery.zalithlauncher.ui.screens.content.home.launcherGlow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -350,16 +351,20 @@ private fun VersionsContent(
     var showList by remember { mutableStateOf(false) }
     val info = version?.getVersionInfo()
     val versionName = info?.minecraftVersion ?: version?.getVersionName()
+    val updateTheme = remember(versionName) { LauncherUpdateThemes.forVersion(versionName) }
     val title = versionName?.let { if (it.startsWith("Minecraft", ignoreCase = true)) it else "Minecraft $it" } ?: "Minecraft"
     val subtitle = when {
         isRefreshing -> "Carregando versões…"
         version == null -> "Selecione uma versão para jogar"
         version?.isValid() != true -> "Verifique os arquivos desta versão"
+        updateTheme != null -> updateTheme.title
         version?.isSummaryValid() == true -> version?.getVersionSummary().orEmpty()
-        else -> "Java Edition"
+        else -> "Versão selecionada"
     }
-    val loader = info?.loaderInfo?.loader?.displayName ?: "Vanilla"
+    val loader = info?.primaryLoader?.loader?.displayName ?: "Vanilla"
     val shape = RoundedCornerShape(15.dp)
+    val compact = imageHeight < 106.dp
+    val badgeSize = if (compact) 30.dp else 34.dp
 
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Box(modifier = Modifier.fillMaxWidth()) {
@@ -376,34 +381,38 @@ private fun VersionsContent(
                     .guideNode(GuideKeys.Main.Step.VersionList, preferSide = GuideSide.Above)
             ) {
                 Image(
-                    painter = painterResource(R.drawable.launcher_update_art),
+                    painter = painterResource(updateTheme?.artwork ?: R.drawable.img_minecraft),
                     contentDescription = null,
                     modifier = Modifier.matchParentSize(),
-                    contentScale = ContentScale.Crop,
+                    contentScale = if (updateTheme != null) ContentScale.Crop else ContentScale.Fit,
                     alignment = Alignment.Center
                 )
                 Box(Modifier.matchParentSize().background(Brush.verticalGradient(listOf(
-                    Color.Black.copy(alpha = 0.64f), Color.Black.copy(alpha = 0.08f), Color.Black.copy(alpha = 0.64f)
+                    Color.Black.copy(alpha = 0.04f), Color.Black.copy(alpha = 0.12f), Color.Black.copy(alpha = 0.82f)
                 ))))
-                Column(modifier = Modifier.fillMaxSize().padding(9.dp)) {
-                    Text(title, color = Color.White, fontSize = 17.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(subtitle, color = Color(0xFFE2E6EA), fontSize = 10.5.sp, lineHeight = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Spacer(Modifier.weight(1f))
+                Column(
+                    modifier = Modifier.align(Alignment.BottomStart).fillMaxWidth()
+                        .padding(if (compact) 7.dp else 9.dp)
+                ) {
+                    Text(title, color = Color.White, fontSize = if (compact) 15.sp else 17.sp, lineHeight = if (compact) 18.sp else 20.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(subtitle, color = Color(0xFFE2E6EA), fontSize = if (compact) 9.5.sp else 10.5.sp, lineHeight = if (compact) 12.sp else 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Spacer(Modifier.height(4.dp))
                     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Row(
-                            modifier = Modifier.weight(1f, fill = false)
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(Color(0xE6212F38))
-                                .padding(horizontal = 7.dp, vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            VersionIconImage(version = version, modifier = Modifier.size(24.dp))
-                            Text(if (version == null) "Selecionar" else loader, color = Color.White, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Box(modifier = Modifier.weight(1f)) {
+                            Row(
+                                modifier = Modifier.clip(RoundedCornerShape(10.dp))
+                                    .background(Color(0xE6212F38))
+                                    .padding(horizontal = 7.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                VersionIconImage(version = version, modifier = Modifier.size(if (compact) 22.dp else 24.dp))
+                                Text(if (version == null) "Selecionar" else loader, modifier = Modifier.weight(1f, fill = false), color = Color.White, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            }
                         }
-                        Spacer(Modifier.weight(1f))
+                        Spacer(Modifier.width(8.dp))
                         IconButton(
-                            modifier = Modifier.size(34.dp).launcherGlow(10.dp, 0.4f)
+                            modifier = Modifier.size(badgeSize).launcherGlow(10.dp, 0.4f)
                                 .clip(RoundedCornerShape(10.dp)).background(Color(0xE6212F38)),
                             onClick = { if (version?.isValid() == true) toVersionSettingsScreen() else toVersionManageScreen() }
                         ) {
@@ -437,7 +446,8 @@ private fun VersionsContent(
             }
         }
         Button(
-            modifier = Modifier.fillMaxWidth().height(playHeight).launcherGlow(15.dp, 1f),
+            modifier = Modifier.fillMaxWidth().height(playHeight)
+                .launcherGlow(radius = 15.dp, strength = 1f, tint = Color.White, lineWidth = 0.5.dp, haloWidth = 2.dp),
             shape = RoundedCornerShape(15.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00D85A), contentColor = Color(0xFF041B0D)),
             contentPadding = PaddingValues(0.dp),
