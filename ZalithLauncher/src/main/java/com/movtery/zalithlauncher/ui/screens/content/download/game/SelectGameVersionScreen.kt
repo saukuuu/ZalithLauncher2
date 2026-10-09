@@ -100,6 +100,7 @@ import com.movtery.zalithlauncher.ui.screens.NestedNavKey
 import com.movtery.zalithlauncher.ui.screens.NormalNavKey
 import com.movtery.zalithlauncher.ui.screens.TitledNavKey
 import com.movtery.zalithlauncher.ui.screens.content.elements.backgroundGlass
+import com.movtery.zalithlauncher.ui.screens.content.home.LauncherUpdateThemes
 import com.movtery.zalithlauncher.ui.theme.cardColor
 import com.movtery.zalithlauncher.ui.theme.onCardColor
 import com.movtery.zalithlauncher.utils.animation.getAnimateTween
@@ -847,14 +848,7 @@ private fun updateGlowColor(family: String): Color = when (family) {
 }
 
 /** Nome exibido abaixo de "Minecraft x.xx". */
-private fun updateTitle(family: String): String? = when (family) {
-    "1.21" -> "Tricky Trials"
-    "1.20" -> "Trails & Tales"
-    "1.19" -> "The Wild Update"
-    "1.18" -> "Caves & Cliffs: Part II"
-    "1.17" -> "Caves & Cliffs: Part I"
-    "1.16" -> "Nether Update"
-    "1.15" -> "Buzzy Bees"
+private fun updateTitle(family: String): String? = LauncherUpdateThemes.forVersion(family)?.title ?: when (family) {
     "1.14" -> "Village & Pillage"
     "1.13" -> "Update Aquatic"
     "1.12" -> "Color Update"
@@ -869,24 +863,18 @@ private fun updateTitle(family: String): String? = when (family) {
  * Os nomes abaixo precisam existir em app/src/main/res/drawable.
  */
 @Composable
-private fun updateArtwork(family: String): Painter? = when (family) {
-    "26.3" -> painterResource(R.drawable.update_26_3)
-    "26.2" -> painterResource(R.drawable.update_26_2)
-    "26.1" -> painterResource(R.drawable.update_26_1)
-    "1.21" -> painterResource(R.drawable.update_1_21)
-    "1.20" -> painterResource(R.drawable.update_1_20)
-    "1.19" -> painterResource(R.drawable.update_1_19)
-    "1.18" -> painterResource(R.drawable.update_1_18)
-    "1.17" -> painterResource(R.drawable.update_1_17)
-    "1.16" -> painterResource(R.drawable.update_1_16)
-    "1.15" -> painterResource(R.drawable.update_1_15)
-    "1.14" -> painterResource(R.drawable.update_1_14)
-    "1.13" -> painterResource(R.drawable.update_1_13)
-    "1.12" -> painterResource(R.drawable.update_1_12)
-    "1.11" -> painterResource(R.drawable.update_1_11)
-    "1.9" -> painterResource(R.drawable.update_1_9)
-    "1.6" -> painterResource(R.drawable.update_1_6)
-    else -> null
+private fun updateArtwork(family: String): Painter? {
+    val update = LauncherUpdateThemes.forVersion(family)
+    if (update != null) return painterResource(update.artwork)
+    return when (family) {
+        "1.14" -> painterResource(R.drawable.update_1_14)
+        "1.13" -> painterResource(R.drawable.update_1_13)
+        "1.12" -> painterResource(R.drawable.update_1_12)
+        "1.11" -> painterResource(R.drawable.update_1_11)
+        "1.9" -> painterResource(R.drawable.update_1_9)
+        "1.6" -> painterResource(R.drawable.update_1_6)
+        else -> null
+    }
 }
 
 @Composable
