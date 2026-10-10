@@ -91,6 +91,7 @@ import com.movtery.zalithlauncher.ui.screens.NestedNavKey
 import com.movtery.zalithlauncher.ui.screens.NormalNavKey
 import com.movtery.zalithlauncher.ui.screens.TitledNavKey
 import com.movtery.zalithlauncher.ui.screens.content.elements.isFilenameInvalid
+import com.movtery.zalithlauncher.ui.screens.content.home.LauncherUpdateThemes
 import com.movtery.zalithlauncher.ui.theme.cardColor
 import com.movtery.zalithlauncher.ui.theme.onCardColor
 import com.movtery.zalithlauncher.utils.animation.getAnimateTween
@@ -573,24 +574,33 @@ fun DownloadGameWithAddonScreen(
     }
 }
 
-private data class UpdateArtwork(val drawable: Int, val theme: String, val release: String)
+private data class UpdateArtwork(val drawable: Int, val theme: String, val release: String?)
 
 private fun artworkFor(version: String): UpdateArtwork? {
-    if (version.startsWith("26.3")) return UpdateArtwork(R.drawable.update_263, "Wilderness Bound", "15 de setembro de 2026")
-    if (!version.startsWith("1.")) return null
-    val minor = version.split('.').getOrNull(1)?.toIntOrNull() ?: return null
-    return when (minor) {
-        21 -> UpdateArtwork(R.drawable.update_121, "Tricky Trials", "13 de junho de 2024 (versão 1.21)")
-        20 -> UpdateArtwork(R.drawable.update_120, "Trails & Tales", "7 de junho de 2023")
-        19 -> UpdateArtwork(R.drawable.update_119, "The Wild Update", "7 de junho de 2022")
-        18 -> UpdateArtwork(R.drawable.update_118, "Caves & Cliffs: Part II", "30 de novembro de 2021")
-        17 -> UpdateArtwork(R.drawable.update_117, "Caves & Cliffs: Part I", "8 de junho de 2021")
-        15 -> UpdateArtwork(R.drawable.update_115, "Buzzy Bees", "10 de dezembro de 2019")
-        16 -> UpdateArtwork(R.drawable.update_116, "Nether Update", "23 de junho de 2020")
-        14 -> UpdateArtwork(R.drawable.update_114, "Village & Pillage", "23 de abril de 2019")
-        12 -> UpdateArtwork(R.drawable.update_112, "World of Color Update", "7 de junho de 2017")
-        11 -> UpdateArtwork(R.drawable.update_111, "Exploration Update", "14 de novembro de 2016")
-        9 -> UpdateArtwork(R.drawable.update_19, "Combat Update", "29 de fevereiro de 2016")
+    // Reuse the same artwork catalog as the home and version-selection cards.
+    // A patch such as 26.1.2 must use the 26.1 image, instead of a blank banner.
+    val update = LauncherUpdateThemes.forVersion(version)
+    if (update != null) {
+        val release = when (update.family) {
+            "26.3" -> "15 de setembro de 2026"
+            "26.2" -> "16 de junho de 2026"
+            "26.1" -> "24 de março de 2026"
+            "1.21" -> "13 de junho de 2024 (versão 1.21)"
+            "1.20" -> "7 de junho de 2023"
+            "1.19" -> "7 de junho de 2022"
+            "1.18" -> "30 de novembro de 2021"
+            "1.17" -> "8 de junho de 2021"
+            "1.16" -> "23 de junho de 2020"
+            "1.15" -> "10 de dezembro de 2019"
+            else -> null
+        }
+        return UpdateArtwork(update.artwork, update.title, release)
+    }
+    return when (LauncherUpdateThemes.familyOf(version)) {
+        "1.14" -> UpdateArtwork(R.drawable.update_114, "Village & Pillage", "23 de abril de 2019")
+        "1.12" -> UpdateArtwork(R.drawable.update_112, "World of Color Update", "7 de junho de 2017")
+        "1.11" -> UpdateArtwork(R.drawable.update_111, "Exploration Update", "14 de novembro de 2016")
+        "1.9" -> UpdateArtwork(R.drawable.update_19, "Combat Update", "29 de fevereiro de 2016")
         // Sem imagem cadastrada para 1.7, 1.8 e 1.10. Os metadados ficam em releaseInfo.
         else -> null
     }
