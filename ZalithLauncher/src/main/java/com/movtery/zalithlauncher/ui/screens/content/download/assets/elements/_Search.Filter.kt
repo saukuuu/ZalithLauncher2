@@ -18,6 +18,23 @@
 
 package com.movtery.zalithlauncher.ui.screens.content.download.assets.elements
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.height
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.window.PopupProperties
+import androidx.compose.ui.unit.sp
+import com.movtery.zalithlauncher.game.download.assets.platform.PlatformClasses
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
@@ -26,7 +43,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -46,20 +62,18 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenu
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
-import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -73,7 +87,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.movtery.layer_controller.utils.animateShapeAsState
 import com.movtery.zalithlauncher.R
 import com.movtery.zalithlauncher.game.download.assets.platform.Platform
 import com.movtery.zalithlauncher.game.download.assets.platform.PlatformDisplayLabel
@@ -129,133 +142,179 @@ fun SearchFilter(
     modloaders: List<PlatformDisplayLabel> = emptyList(),
     modloader: PlatformDisplayLabel? = null,
     onModLoaderChange: (PlatformDisplayLabel?) -> Unit = {},
-    extraFilter: (LazyListScope.() -> Unit)? = null
+    extraFilter: (LazyListScope.() -> Unit)? = null,
+    platformClasses: PlatformClasses = PlatformClasses.MOD
 ) {
-    LazyColumn(
-        modifier = modifier,
-        contentPadding = contentPadding,
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        item {
-            SuggestionsText(
-                value = searchName,
-                onValueChange = onSearchNameChange,
-                label = stringResource(R.string.download_assets_filter_search_name),
-                onSearch = onSearch,
-                suggestions = searchedMcMods,
-                suggestionLabel = { item ->
-                    Text(
-                        item.name,
-                        style = MaterialTheme.typography.labelMedium
-                    )
-                    //英文名/次要名称
-                    if (item.subname.isNotBlank()) {
-                        Text(
-                            modifier = Modifier.alpha(0.7f),
-                            text = item.subname,
-                            style = MaterialTheme.typography.labelSmall
-                        )
-                    }
-                },
-                onSuggestionClick = { item ->
-                    onSearchNameChange(
-                        item.subname.ifEmpty { item.abbr }
-                    )
-                    onSearch()
-                    onSearch()
+    var showAdvanced by rememberSaveable { mutableStateOf(false) }
+    val searchLabel = when (platformClasses) {
+        PlatformClasses.MOD -> "Buscar mods…"
+        PlatformClasses.SHADERS -> "Buscar shaders…"
+        PlatformClasses.RESOURCE_PACK -> "Buscar texturas…"
+        PlatformClasses.SAVES -> "Buscar mapas…"
+        PlatformClasses.MOD_PACK -> "Buscar modpacks…"
+    }
+    @Composable
+    fun SearchField(modifier: Modifier) {
+        SuggestionsText(
+            modifier = modifier,
+            value = searchName,
+            onValueChange = onSearchNameChange,
+            label = searchLabel,
+            onSearch = onSearch,
+            suggestions = searchedMcMods,
+            suggestionLabel = { item ->
+                Text(item.name, style = MaterialTheme.typography.labelMedium)
+                if (item.subname.isNotBlank()) {
+                    Text(item.subname, style = MaterialTheme.typography.labelSmall)
                 }
-            )
-        }
-
-        item {
+            },
+            onSuggestionClick = { item ->
+                onSearchNameChange(item.subname.ifEmpty { item.abbr })
+                onSearch()
+            }
+        )
+    }
+    @Composable
+    fun FiltersRow(modifier: Modifier) {
+        BoxWithConstraints(modifier) {
+        val filtersModifier = if (maxWidth < 430.dp) {
+            Modifier.horizontalScroll(rememberScrollState()).width(520.dp)
+        } else Modifier.fillMaxWidth()
+        Row(filtersModifier, horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+            CatalogDropdown(
+                modifier = Modifier.weight(1f),
+                title = "Plataforma",
+                value = searchPlatform.displayName,
+                enabled = enablePlatform,
+                icon = searchPlatform.getDrawable(),
+                iconTint = searchPlatform.getBrandColor()
+            ) { close ->
+                Platform.entries.forEach { platform ->
+                    DropdownMenuItem(text = { Text(platform.displayName) }, onClick = {
+                        close()
+                        if (platform != searchPlatform) onPlatformChange(platform)
+                    })
+                }
+            }
+            if (enableModLoader) {
+                CatalogDropdown(
+                    modifier = Modifier.weight(1f),
+                    title = "Carregador",
+                    value = modloader?.getDisplayName() ?: "Todos"
+                ) { close ->
+                    DropdownMenuItem(text = { Text("Todos") }, onClick = { close(); onModLoaderChange(null) })
+                    modloaders.forEach { loader ->
+                        DropdownMenuItem(text = { Text(loader.getDisplayName()) }, onClick = { close(); onModLoaderChange(loader) })
+                    }
+                }
+            }
             SuggestionsText(
+                modifier = Modifier.weight(1.05f),
                 value = gameVersion,
                 onValueChange = onGameVersionChange,
-                label = stringResource(R.string.download_assets_filter_game_version),
+                label = "Versão do jogo",
                 onSearch = onSearch,
-                suggestions = searchedVersions,
-                suggestionLabel = { item ->
-                    Text(
-                        text = item,
-                        style = MaterialTheme.typography.labelMedium
-                    )
-                },
-                onSuggestionClick = { item ->
-                    onGameVersionChange(item)
-                    onSearch()
-                }
+                suggestions = listOf("") + searchedVersions.filter { it.isNotBlank() },
+                suggestionLabel = { Text(it.ifBlank { "Todas" }, style = MaterialTheme.typography.labelMedium) },
+                onSuggestionClick = { onGameVersionChange(it); onSearch() },
+                versionField = true
             )
-        }
-
-        extraFilter?.invoke(this@LazyColumn)
-
-        if (enablePlatform) {
-            item {
-                PlatformListLayout(
-                    modifier = Modifier.fillMaxWidth(),
-                    searchPlatform = searchPlatform,
-                    onPlatformChange = onPlatformChange,
-                )
+            IconButton(onClick = { showAdvanced = true }) {
+                Icon(painterResource(R.drawable.ic_filter_alt_outlined), contentDescription = if (extraFilter != null) "Mais filtros e importar modpack" else "Mais filtros", tint = DownloadCatalogColors.text)
             }
         }
-
-        item {
-            FilterListLayout(
-                modifier = Modifier.fillMaxWidth(),
-                items = PlatformSortField.entries,
-                selectionMode = FilterSelectionMode.Single,
-                selectedItems = listOfNotNull(sortField),
-                onSelectionChange = { new ->
-                    new.first().takeIf { it != sortField }?.let { value ->
-                        onSortFieldChange(value)
-                    }
-                },
-                getItemLabel = { item ->
-                    stringResource(item.getDisplayName())
-                },
-                title = stringResource(R.string.sort_by),
-                cancelable = false
-            )
         }
-
-        item {
-            FilterListLayout(
-                modifier = Modifier.fillMaxWidth(),
-                items = allCategories,
-                selectionMode = FilterSelectionMode.Multiple,
-                selectedItems = categories,
-                onSelectionChange = { news ->
-                    news.takeIf { it.toSet() != categories.toSet() }?.let { value ->
-                        onCategoryChanged(value)
-                    }
-                },
-                getItemLabel = { item ->
-                    stringResource(item.getDisplayName())
-                },
-                title = stringResource(R.string.download_assets_filter_category)
-            )
-        }
-
-        if (enableModLoader) {
-            item {
-                FilterListLayout(
-                    modifier = Modifier.fillMaxWidth(),
-                    items = modloaders,
-                    selectionMode = FilterSelectionMode.Single,
-                    selectedItems = listOfNotNull(modloader),
-                    onSelectionChange = { new ->
-                        val value = new.firstOrNull()
-                        if (value != modloader) onModLoaderChange(value)
-                    },
-                    getItemLabel = { item ->
-                        item.getDisplayName()
-                    },
-                    title = stringResource(R.string.download_assets_filter_modloader)
-                )
+    }
+    BoxWithConstraints(modifier.padding(contentPadding)) {
+        if (maxWidth >= 780.dp) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                SearchField(Modifier.weight(1f))
+                FiltersRow(Modifier.weight(1.35f))
+            }
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                SearchField(Modifier.fillMaxWidth())
+                FiltersRow(Modifier.fillMaxWidth())
             }
         }
     }
+    if (showAdvanced) {
+        AlertDialog(
+            onDismissRequest = { showAdvanced = false },
+            title = { Text("Mais opções") },
+            text = {
+                LazyColumn(
+                    Modifier.fillMaxWidth().heightIn(max = 320.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    item {
+                        FilterListLayout(
+                            title = stringResource(R.string.sort_by),
+                            items = PlatformSortField.entries,
+                            selectionMode = FilterSelectionMode.Single,
+                            selectedItems = listOf(sortField),
+                            onSelectionChange = { new -> new.firstOrNull()?.let { if (it != sortField) onSortFieldChange(it) } },
+                            getItemLabel = { stringResource(it.getDisplayName()) },
+                            cancelable = false
+                        )
+                    }
+                    if (allCategories.isNotEmpty()) {
+                        item {
+                            FilterListLayout(
+                                title = stringResource(R.string.download_assets_filter_category),
+                                items = allCategories,
+                                selectionMode = FilterSelectionMode.Multiple,
+                                selectedItems = categories,
+                                onSelectionChange = onCategoryChanged,
+                                getItemLabel = { stringResource(it.getDisplayName()) }
+                            )
+                        }
+                    }
+                    extraFilter?.invoke(this)
+                }
+            },
+            confirmButton = { TextButton(onClick = { showAdvanced = false }) { Text("Concluir") } }
+        )
+    }
 }
+
+@Composable
+private fun CatalogDropdown(
+    title: String,
+    value: String,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    icon: Int? = null,
+    iconTint: Color = DownloadCatalogColors.text,
+    menu: @Composable (() -> Unit) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Box(modifier.padding(top = 7.dp)) {
+        Row(
+            Modifier.fillMaxWidth().height(49.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(DownloadCatalogColors.field)
+                .border(0.65.dp, Color.White.copy(alpha = 0.36f), RoundedCornerShape(10.dp))
+                .clickable(enabled = enabled) { expanded = true }
+                .padding(horizontal = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(7.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (icon != null) Icon(painterResource(icon), null, Modifier.size(18.dp), tint = iconTint)
+            Text(value, Modifier.weight(1f), color = DownloadCatalogColors.text, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (enabled) Icon(painterResource(R.drawable.ic_arrow_drop_down_rounded), null, Modifier.size(18.dp), tint = DownloadCatalogColors.text)
+        }
+        Text(
+            title,
+            Modifier.offset(y = (-7).dp).padding(start = 10.dp).background(DownloadCatalogColors.background).padding(horizontal = 4.dp),
+            color = DownloadCatalogColors.secondary, fontSize = 10.sp
+        )
+        DropdownMenu(expanded = expanded && enabled, onDismissRequest = { expanded = false }) {
+            menu { expanded = false }
+        }
+    }
+}
+
 
 
 
@@ -282,78 +341,64 @@ private fun <E> SuggestionsText(
     suggestionLabel: @Composable FlowRowScope.(E) -> Unit,
     onSuggestionClick: (E) -> Unit,
     modifier: Modifier = Modifier,
+    versionField: Boolean = false,
 ) {
     val focusManager = LocalFocusManager.current
     val interactionSource = remember { MutableInteractionSource() }
-    val isFocused = interactionSource.collectIsFocusedAsState().value
-    val showSuggestions = isFocused && suggestions.isNotEmpty()
-    ExposedDropdownMenuBox(
-        expanded = showSuggestions,
-        onExpandedChange = {
-            focusManager.clearFocus(false)
-        }
-    ) {
-        val fieldShape by animateShapeAsState(
-            if (showSuggestions) RoundedCornerShape(
-                topStart = 16.0.dp, topEnd = 16.0.dp,
-                bottomStart = 0.dp, bottomEnd = 0.dp
-            )
-            else RoundedCornerShape(16.0.dp)
-        )
+    var suggestionsOpen by remember { mutableStateOf(false) }
+    val showSuggestions = suggestionsOpen && suggestions.isNotEmpty()
+    Box(modifier) {
         OwnOutlinedTextField(
-            modifier = modifier
-                .fillMaxWidth()
-                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable),
+            modifier = Modifier.fillMaxWidth().height(56.dp),
             value = value,
-            onValueChange = onValueChange,
-            shape = fieldShape,
-            label = {
-                Text(text = label)
-            },
+            textStyle = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
+            onValueChange = { onValueChange(it); suggestionsOpen = true },
+            shape = RoundedCornerShape(10.dp),
+            label = if (versionField) ({ Text(label, fontSize = 10.sp) }) else null,
+            placeholder = { Text(if (versionField) "Todas" else label, fontSize = 12.sp) },
+            leadingIcon = if (!versionField) ({
+                Icon(painterResource(R.drawable.ic_search), null, Modifier.size(20.dp))
+            }) else null,
             trailingIcon = {
-                IconButton(
-                    onClick = onSearch
-                ) {
+                IconButton(onClick = {
+                    if (versionField) suggestionsOpen = !suggestionsOpen
+                    else { suggestionsOpen = false; focusManager.clearFocus(); onSearch() }
+                }) {
                     Icon(
-                        painter = painterResource(R.drawable.ic_search),
-                        contentDescription = stringResource(R.string.generic_search)
+                        painterResource(if (versionField) R.drawable.ic_arrow_drop_down_rounded else R.drawable.ic_arrow_right_rounded),
+                        contentDescription = if (versionField) "Selecionar versão" else stringResource(R.string.generic_search),
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             },
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = DownloadCatalogColors.field,
+                unfocusedContainerColor = DownloadCatalogColors.field,
+                focusedBorderColor = Color.White,
+                unfocusedBorderColor = Color.White.copy(alpha = 0.36f),
+                focusedTextColor = DownloadCatalogColors.text,
+                unfocusedTextColor = DownloadCatalogColors.text
+            ),
             singleLine = true,
-            keyboardOptions = KeyboardOptions(
-                imeAction = ImeAction.Search
-            ),
-            keyboardActions = KeyboardActions(
-                onSearch = {
-                    onSearch()
-                }
-            ),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+            keyboardActions = KeyboardActions(onSearch = { suggestionsOpen = false; onSearch() }),
             interactionSource = interactionSource
         )
-
-        ExposedDropdownMenu(
+        DropdownMenu(
+            properties = PopupProperties(focusable = false),
             expanded = showSuggestions,
-            onDismissRequest = {
-                focusManager.clearFocus(false)
-            },
-            shape = RoundedCornerShape(
-                topStart = 0.dp, topEnd = 0.dp,
-                bottomStart = 16.0.dp, bottomEnd = 16.0.dp,
-            )
+            onDismissRequest = { suggestionsOpen = false },
+            shape = RoundedCornerShape(10.dp)
         ) {
             suggestions.forEach { item ->
                 DropdownMenuItem(
                     text = {
-                        FlowRow(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            verticalArrangement = Arrangement.Center
-                        ) {
+                        FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.Center) {
                             suggestionLabel(item)
                         }
                     },
                     onClick = {
+                        suggestionsOpen = false
                         onSuggestionClick(item)
                         focusManager.clearFocus(false)
                     }

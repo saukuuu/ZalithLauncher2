@@ -18,9 +18,20 @@
 
 package com.movtery.zalithlauncher.ui.screens.content.download.assets.elements
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+import com.movtery.zalithlauncher.game.download.assets.platform.modrinth.ModrinthSearchResult
+import com.movtery.zalithlauncher.game.download.assets.platform.modrinth.models.ModrinthSide
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -42,36 +53,31 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearWavyProgressIndicator
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.TransformOrigin
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
@@ -97,7 +103,6 @@ import com.movtery.zalithlauncher.ui.components.SmallOutlinedEditField
 import com.movtery.zalithlauncher.ui.screens.content.elements.backgroundGlass
 import com.movtery.zalithlauncher.ui.theme.cardColor
 import com.movtery.zalithlauncher.ui.theme.onCardColor
-import com.movtery.zalithlauncher.utils.animation.getAnimateTween
 import com.movtery.zalithlauncher.utils.formatNumberByLocale
 import com.movtery.zalithlauncher.utils.string.isEmptyOrBlank
 
@@ -130,89 +135,54 @@ fun ResultListLayout(
 ) {
     when (searchState) {
         is SearchAssetsState.Searching -> {
-            Box(
-                modifier.padding(all = 12.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                LinearWavyProgressIndicator(
-                    modifier = Modifier.width(168.dp),
-                    wavelength = 32.dp
-                )
+            Box(modifier.padding(12.dp), contentAlignment = Alignment.Center) {
+                LinearProgressIndicator(modifier = Modifier.width(168.dp))
             }
         }
         is SearchAssetsState.Success -> {
             val page = searchState.page
-
             val listState = rememberLazyListState()
-            val maxCollapsePx = with(LocalDensity.current) { controllerHeight.toPx() }
-
-            //计算缩放比例，滑动偏移限制在0 ~ maxCollapsePx之间
-            val fraction by remember {
-                derivedStateOf {
-                    val index = listState.firstVisibleItemIndex
-                    val offset = listState.firstVisibleItemScrollOffset.toFloat()
-
-                    when {
-                        index > 0 -> 1f
-                        else -> (offset.coerceIn(0f, maxCollapsePx) / maxCollapsePx)
+            LaunchedEffect(page.pageNumber) { listState.scrollToItem(0) }
+            Column(modifier) {
+                if (page.data.isEmpty()) {
+                    Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
+                        Text("Nenhum resultado. Tente outro nome ou ajuste os filtros.", color = DownloadCatalogColors.secondary, modifier = Modifier.padding(20.dp))
                     }
-                }
-            }
-
-            Box(modifier = modifier) {
-                ResultList(
-                    modifier = Modifier.fillMaxSize(),
-                    state = listState,
-                    contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 60.dp, bottom = 6.dp),
-                    classes = classes,
-                    data = page.data,
-                    swapToDownload = swapToDownload,
-                    installedInfo = installedInfo
-                )
-
-                val targetScale = 1f - (1f - controllerMinScale) * fraction
-                val animatedScale by animateFloatAsState(targetScale)
-                val targetAlpha = 1f - (1f - controllerMinAlpha) * fraction
-                val animatedAlpha by animateFloatAsState(targetAlpha)
-
-                Row(
-                    modifier = Modifier
-                        .height(controllerHeight)
-                        .align(Alignment.TopEnd)
-                        .padding(top = 12.dp, end = 6.dp)
-                        .alpha(animatedAlpha)
-                        .graphicsLayer {
-                            scaleX = animatedScale
-                            scaleY = animatedScale
-                            transformOrigin = TransformOrigin(1f, 0f)
-                        }
-                ) {
-                    PageController(
-                        modifier = Modifier.padding(end = 6.dp),
-                        page = page,
-                        onPreviousPage = {
-                            onPreviousPage(page.pageNumber)
-                        },
-                        onNextPage = {
-                            onNextPage(page.pageNumber, page.isLastPage)
-                        },
-                        onNavigatePage = onNavigatePage,
+                } else {
+                    ResultList(
+                        modifier = Modifier.fillMaxWidth().weight(1f),
+                        state = listState,
+                        contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 6.dp, bottom = 10.dp),
+                        classes = classes,
+                        data = page.data,
+                        swapToDownload = swapToDownload,
+                        installedInfo = installedInfo
                     )
+                }
+                if (page.data.isNotEmpty()) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 3.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        PageController(
+                            page = page,
+                            color = DownloadCatalogColors.card,
+                            contentColor = DownloadCatalogColors.text,
+                            influencedByBackground = false,
+                            onPreviousPage = { onPreviousPage(page.pageNumber) },
+                            onNextPage = { onNextPage(page.pageNumber, page.isLastPage) },
+                            onNavigatePage = onNavigatePage
+                        )
+                    }
                 }
             }
         }
         is SearchAssetsState.Error -> {
-            Box(modifier.padding(all = 12.dp)) {
+            Box(modifier.padding(12.dp)) {
                 ScalingLabel(
                     modifier = Modifier.align(Alignment.Center),
-                    text = {
-                        AndroidStringText(
-                            text = androidText(
-                                R.string.download_assets_failed_to_get_result,
-                                searchState.message
-                            )
-                        )
-                    },
+                    text = { AndroidStringText(text = androidText(R.string.download_assets_failed_to_get_result, searchState.message)) },
                     onClick = onReload
                 )
             }
@@ -369,44 +339,45 @@ private fun ResultList(
     installedInfo: ((Platform, projectId: String) -> InstalledMod?)? = null
 ) {
     val context = LocalContext.current
-    LazyColumn(
-        modifier = modifier,
-        state = state,
-        contentPadding = contentPadding
-    ) {
-        items(data) { (item, mcmod) ->
-            val platform = remember(item) { item.platform() }
-            val title = remember(item) { item.platformTitle() }
-            val description = remember(item) { item.platformDescription() }
-            val iconUrl = remember(item) { item.platformIconUrl() }
-            val author = remember(item) { item.platformAuthor() }
-            val downloads = remember(item) { item.platformDownloadCount() }
-            val modloaders = remember(item) { item.platformModLoaders() }
-            val categories = remember(item, classes) { item.platformCategories(classes) }
-            val isInstalled = installedInfo?.invoke(platform, item.platformId()) != null
-            val isFavorite = FavoriteProjectsRepository.isFavorite(platform, item.platformId())
-
-            ResultProjectLayout(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 6.dp),
-                platform = platform,
-                title = mcmod.getMcmodTitle(title, context),
-                description = description,
-                iconUrl = iconUrl,
-                author = author,
-                downloads = downloads,
-                modloaders = modloaders,
-                categories = categories?.sortedWith { o1, o2 -> o1.index() - o2.index() },
-                isInstalled = isInstalled,
-                isFavorite = isFavorite,
-                onFavoriteClick = {
-                    FavoriteProjectsRepository.toggle(item, classes)
-                },
-                onClick = {
-                    swapToDownload(platform, item.platformId(), iconUrl)
+    BoxWithConstraints(modifier) {
+        // Two columns on landscape phones/tablets; one column if the content becomes narrow.
+        val columns = if (maxWidth >= 600.dp) 2 else 1
+        val rows = remember(data, columns) { data.chunked(columns) }
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            state = state,
+            contentPadding = contentPadding,
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            itemsIndexed(rows, key = { index, row -> "${row.first().first.platform()}:${row.first().first.platformId()}:$index" }) { _, row ->
+                Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    row.forEach { (item, mcmod) ->
+                        val platform = item.platform()
+                        val projectId = item.platformId()
+                        val iconUrl = item.platformIconUrl()
+                        val side = (item as? ModrinthSearchResult.ModrinthProject)?.clientSide
+                        val clientSupported = side == ModrinthSide.REQUIRED || side == ModrinthSide.OPTIONAL
+                        ResultProjectLayout(
+                            modifier = Modifier.weight(1f).fillMaxHeight(),
+                            platform = platform,
+                            title = mcmod.getMcmodTitle(item.platformTitle(), context),
+                            description = item.platformDescription(),
+                            iconUrl = iconUrl,
+                            author = item.platformAuthor(),
+                            downloads = item.platformDownloadCount(),
+                            modloaders = item.platformModLoaders(),
+                            categories = item.platformCategories(classes)?.sortedBy { it.index() },
+                            isInstalled = installedInfo?.invoke(platform, projectId) != null,
+                            isFavorite = FavoriteProjectsRepository.isFavorite(platform, projectId),
+                            follows = item.platformFollows(),
+                            clientSupported = clientSupported,
+                            onFavoriteClick = { FavoriteProjectsRepository.toggle(item, classes) },
+                            onClick = { swapToDownload(platform, projectId, iconUrl) }
+                        )
+                    }
+                    if (row.size < columns) Spacer(Modifier.weight(1f))
                 }
-            )
+            }
         }
     }
 }
@@ -426,133 +397,89 @@ fun ResultProjectLayout(
     isInstalled: Boolean = false,
     isFavorite: Boolean = false,
     onFavoriteClick: (() -> Unit)? = null,
-    shape: Shape = MaterialTheme.shapes.large,
+    shape: Shape = RoundedCornerShape(12.dp),
     influencedByBackground: Boolean = true,
-    color: Color = cardColor(influencedByBackground),
-    contentColor: Color = onCardColor(),
+    color: Color = DownloadCatalogColors.card,
+    contentColor: Color = DownloadCatalogColors.text,
     blur: Int = AllSettings.backgroundBlur.state,
+    follows: Long? = null,
+    clientSupported: Boolean = false,
     onClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
-
-    val scale = remember { Animatable(initialValue = 0.95f) }
-    LaunchedEffect(Unit) {
-        scale.animateTo(targetValue = 1f, animationSpec = getAnimateTween())
-    }
-
-    Surface(
-        modifier = modifier.graphicsLayer(scaleY = scale.value, scaleX = scale.value),
-        shape = shape,
-        color = color,
-        contentColor = contentColor,
-        onClick = onClick
+    Column(
+        modifier.downloadCatalogGlow(12.dp, 0.95f)
+            .clip(shape).background(color).clickable(onClick = onClick)
+            .padding(12.dp).heightIn(min = 134.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Row(
-            modifier = Modifier
-                .backgroundGlass(blur, color, influencedByBackground)
-                .padding(all = 8.dp)
-                .height(IntrinsicSize.Min),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            AssetsIcon(
-                modifier = Modifier
-                    .clip(shape = RoundedCornerShape(10.dp))
-                    .align(Alignment.CenterVertically),
-                size = 72.dp,
-                iconUrl = iconUrl
-            )
-
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
+            AssetsIcon(modifier = Modifier.clip(RoundedCornerShape(9.dp)), size = 50.dp, iconUrl = iconUrl)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(title, color = contentColor, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                if (!author.isNullOrBlank()) {
+                    Text("por $author", color = contentColor.copy(alpha = 0.72f), fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+            OutlinedButton(
+                onClick = onClick,
+                modifier = Modifier.heightIn(min = 38.dp).downloadCatalogGlow(9.dp, 0.35f),
+                shape = RoundedCornerShape(9.dp),
+                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                border = BorderStroke(0.6.dp, Color.White.copy(alpha = 0.65f)),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = contentColor, containerColor = Color.White.copy(alpha = 0.025f))
             ) {
-                ProjectTitleHead(
-                    platform = platform,
-                    title = title,
-                    author = author
+                Icon(painterResource(if (isInstalled) R.drawable.ic_check else R.drawable.ic_download_2_outlined), contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(5.dp))
+                Text(if (isInstalled) "Instalado" else "Instalar", fontSize = 11.sp, maxLines = 1)
+            }
+        }
+        Text(
+            description,
+            Modifier.fillMaxWidth().weight(1f).padding(start = 60.dp),
+            color = contentColor.copy(alpha = 0.82f), fontSize = 12.sp, lineHeight = 17.sp,
+            minLines = 2, maxLines = 2, overflow = TextOverflow.Ellipsis
+        )
+        FlowRow(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Row(Modifier.heightIn(min = 26.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Icon(painterResource(R.drawable.ic_download_2_outlined), contentDescription = "Downloads", modifier = Modifier.size(15.dp), tint = contentColor)
+                Text(formatNumberByLocale(context, downloads), color = contentColor.copy(alpha = 0.85f), fontSize = 11.sp)
+            }
+            Row(
+                Modifier.clip(RoundedCornerShape(6.dp))
+                    .then(if (onFavoriteClick != null) Modifier.clickable(onClickLabel = if (isFavorite) "Remover dos favoritos" else "Adicionar aos favoritos", onClick = onFavoriteClick) else Modifier)
+                    .heightIn(min = 26.dp).padding(horizontal = 3.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Icon(
+                    painterResource(if (isFavorite) R.drawable.ic_favorite_filled else R.drawable.ic_favorite_outlined),
+                    contentDescription = if (isFavorite) "Favorito" else "Favoritar",
+                    modifier = Modifier.size(15.dp), tint = if (isFavorite) Color(0xFFFFAAC5) else contentColor
                 )
-
-                Row(
-                    modifier = Modifier.weight(1f),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    //描述
-                    Text(
-                        modifier = Modifier.weight(1f),
-                        text = description,
-                        style = MaterialTheme.typography.bodySmall,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-
-                    //下载量
-                    Row(
-                        modifier = Modifier.alpha(0.7f),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            modifier = Modifier.size(16.dp),
-                            painter = painterResource(R.drawable.ic_download_2_outlined),
-                            contentDescription = null
-                        )
-                        Text(
-                            text = formatNumberByLocale(context, downloads),
-                            style = MaterialTheme.typography.labelSmall
-                        )
-                    }
-                }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    //标签栏
-                    Row(
-                        modifier = Modifier
-                            .weight(1f)
-                            .basicMarquee(Int.MAX_VALUE)
-                            .alpha(0.7f),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        modloaders?.let {
-                            it.forEach { modloader ->
-                                Text(
-                                    text = modloader.getDisplayName(),
-                                    style = MaterialTheme.typography.labelSmall
-                                )
-                            }
-                        }
-                        categories?.let {
-                            it.forEach { category ->
-                                Text(
-                                    text = stringResource(category.getDisplayName()),
-                                    style = MaterialTheme.typography.labelSmall
-                                )
-                            }
-                        }
-                    }
-
-                    //资源的类别
-                    if (classes != null) {
-                        ClassesIdentifier(classes = classes)
-                    }
-
-                    if (isInstalled) {
-                        InstalledModBadge()
-                    }
-
-                    onFavoriteClick?.let { onFavorite ->
-                        FavoriteToggleLabel(
-                            isFavorite = isFavorite,
-                            onClick = onFavorite
-                        )
-                    }
-                }
+                if (follows != null) Text(formatNumberByLocale(context, follows), color = contentColor.copy(alpha = 0.85f), fontSize = 11.sp)
+            }
+            if (clientSupported) CatalogTag("Client", DownloadCatalogColors.blue)
+            modloaders?.take(2)?.forEach { CatalogTag(it.getDisplayName(), Color(0xFF343B45)) }
+            if (!clientSupported && modloaders.isNullOrEmpty()) {
+                if (classes != null) ClassesIdentifier(classes = classes)
+                else categories?.firstOrNull()?.let { CatalogTag(stringResource(it.getDisplayName()), DownloadCatalogColors.blue) }
             }
         }
     }
+}
+
+@Composable
+private fun CatalogTag(text: String, color: Color) {
+    Text(
+        text,
+        Modifier.clip(RoundedCornerShape(6.dp)).background(color).padding(horizontal = 8.dp, vertical = 4.dp),
+        color = Color.White, fontSize = 10.sp, lineHeight = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis
+    )
 }
 
 @Composable
