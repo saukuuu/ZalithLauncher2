@@ -18,40 +18,31 @@
 
 package com.movtery.zalithlauncher.ui.screens.content
 
-import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationRailItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.navigation3.runtime.NavBackStack
+import androidx.compose.ui.unit.sp
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
 import com.movtery.zalithlauncher.R
@@ -59,24 +50,18 @@ import com.movtery.zalithlauncher.game.download.assets.favorites.FavoriteProject
 import com.movtery.zalithlauncher.game.download.assets.platform.Platform
 import com.movtery.zalithlauncher.game.download.assets.platform.PlatformClasses
 import com.movtery.zalithlauncher.ui.base.BaseScreen
-import com.movtery.zalithlauncher.ui.components.fadeEdge
+import com.movtery.zalithlauncher.ui.screens.BackStackNavKey
 import com.movtery.zalithlauncher.ui.screens.NestedNavKey
 import com.movtery.zalithlauncher.ui.screens.NormalNavKey
 import com.movtery.zalithlauncher.ui.screens.TitledNavKey
-import com.movtery.zalithlauncher.ui.screens.content.download.DownloadFavoritesScreen
-import com.movtery.zalithlauncher.ui.screens.content.download.DownloadGameScreen
-import com.movtery.zalithlauncher.ui.screens.content.download.DownloadModPackScreen
-import com.movtery.zalithlauncher.ui.screens.content.download.DownloadModScreen
-import com.movtery.zalithlauncher.ui.screens.content.download.DownloadResourcePackScreen
-import com.movtery.zalithlauncher.ui.screens.content.download.DownloadSavesScreen
-import com.movtery.zalithlauncher.ui.screens.content.download.DownloadShadersScreen
+import com.movtery.zalithlauncher.ui.screens.content.download.*
+import com.movtery.zalithlauncher.ui.screens.content.download.assets.elements.DownloadCatalogColors
+import com.movtery.zalithlauncher.ui.screens.content.download.assets.elements.DownloadCatalogTheme
+import com.movtery.zalithlauncher.ui.screens.content.download.assets.elements.downloadCatalogGlow
 import com.movtery.zalithlauncher.ui.screens.content.download.assets.search.SearchIdScreen
-import com.movtery.zalithlauncher.ui.screens.content.elements.CategoryIcon
-import com.movtery.zalithlauncher.ui.screens.content.elements.CategoryItem
 import com.movtery.zalithlauncher.ui.screens.navigateOnce
 import com.movtery.zalithlauncher.ui.screens.onBack
 import com.movtery.zalithlauncher.ui.screens.rememberTransitionSpec
-import com.movtery.zalithlauncher.utils.animation.swapAnimateDpAsState
 import com.movtery.zalithlauncher.viewmodel.ErrorViewModel
 import com.movtery.zalithlauncher.viewmodel.EventViewModel
 import com.movtery.zalithlauncher.viewmodel.ModpackImportViewModel
@@ -130,149 +115,194 @@ fun DownloadScreen(
     backScreenViewModel: ScreenBackStackViewModel,
     modpackImportViewModel: ModpackImportViewModel,
     eventViewModel: EventViewModel,
-    submitError: (ErrorViewModel.ThrowableMessage) -> Unit
+    submitError: (ErrorViewModel.ThrowableMessage) -> Unit,
+    taskCount: Int = 0,
+    onShowTasks: () -> Unit = {}
 ) {
-    //进入下载屏幕时确保收藏仓库完成初始化
-    LaunchedEffect(Unit) {
-        FavoriteProjectsRepository.ensureLoaded()
-    }
-
+    LaunchedEffect(Unit) { FavoriteProjectsRepository.ensureLoaded() }
     BaseScreen(
         screenKey = key,
         currentKey = backScreenViewModel.mainScreen.currentKey,
         useClassEquality = true
-    ) { isVisible: Boolean ->
-        Row(modifier = Modifier.fillMaxSize()) {
-            TabMenu(
-                modifier = Modifier.fillMaxHeight(),
-                isVisible = isVisible,
-                backStack = key.backStack,
-                backScreenViewModel = backScreenViewModel,
-            )
+    ) {
+        DownloadCatalogTheme {
+            BoxWithConstraints(Modifier.fillMaxSize().background(DownloadCatalogColors.background)) {
+                val compact = maxHeight < 480.dp
+                val narrowRail = maxWidth < 760.dp
+                val sidebarWidth = if (narrowRail) 64.dp else 166.dp
+                val currentCategory = key.backStack.lastOrNull()
+                val nested = currentCategory as? BackStackNavKey<*>
+                val canGoBack = (nested?.backStack?.size ?: 0) > 1
+                Row(Modifier.fillMaxSize()) {
+                    CatalogSidebar(
+                        modifier = Modifier.width(sidebarWidth).fillMaxHeight(),
+                        compact = compact,
+                        iconsOnly = narrowRail,
+                        currentCategory = currentCategory,
+                        backScreenViewModel = backScreenViewModel
+                    )
+                    Box(Modifier.fillMaxHeight().width(0.5.dp).background(Color.White.copy(alpha = 0.16f)))
+                    Column(Modifier.weight(1f).fillMaxHeight()) {
+                        Row(
+                            Modifier.fillMaxWidth().padding(start = 18.dp, end = 12.dp, top = if (compact) 8.dp else 16.dp, bottom = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            if (canGoBack) {
+                                IconButton(onClick = { nested?.backStack?.removeLastOrNull() }) {
+                                    Icon(painterResource(R.drawable.ic_arrow_back), contentDescription = "Voltar", tint = DownloadCatalogColors.text)
+                                }
+                            }
+                            Column(Modifier.weight(1f)) {
+                                Text("Download", color = DownloadCatalogColors.text, fontSize = if (compact) 22.sp else 28.sp, fontWeight = FontWeight.Bold)
+                                if (!compact) {
+                                    Text(
+                                        "Encontre e instale mods, shaders, texturas, mapas e modpacks.",
+                                        color = DownloadCatalogColors.secondary, fontSize = 13.sp,
+                                        maxLines = 1, overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+                            if (taskCount > 0) {
+                                Row(
+                                    Modifier.downloadCatalogGlow(10.dp, 0.55f)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .clickable(role = Role.Button, onClickLabel = "Mostrar tarefas", onClick = onShowTasks)
+                                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Icon(painterResource(R.drawable.ic_download_2_outlined), null, Modifier.size(18.dp), tint = DownloadCatalogColors.text)
+                                    Text("Tarefas ($taskCount)", color = DownloadCatalogColors.text, fontSize = 12.sp)
+                                }
+                            }
+                        }
+                        CatalogTabs(
+                            selectedKey = currentCategory,
+                            backScreenViewModel = backScreenViewModel,
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp)
+                        )
+                        NavigationUI(
+                            key = key,
+                            backScreenViewModel = backScreenViewModel,
+                            eventViewModel = eventViewModel,
+                            modpackImportViewModel = modpackImportViewModel,
+                            submitError = submitError,
+                            modifier = Modifier.fillMaxWidth().weight(1f)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
 
-            NavigationUI(
-                key = key,
-                backScreenViewModel = backScreenViewModel,
-                eventViewModel = eventViewModel,
-                modpackImportViewModel = modpackImportViewModel,
-                submitError = submitError,
-                modifier = Modifier.fillMaxHeight()
-            )
+private data class CatalogDestination(val key: TitledNavKey, val label: String, val icon: Int)
+
+@Composable
+private fun CatalogTabs(
+    selectedKey: TitledNavKey?,
+    backScreenViewModel: ScreenBackStackViewModel,
+    modifier: Modifier = Modifier
+) {
+    val entries = listOf(
+        CatalogDestination(backScreenViewModel.downloadModScreen, "Mods", R.drawable.ic_extension_outlined),
+        CatalogDestination(backScreenViewModel.downloadShadersScreen, "Shaders", R.drawable.ic_lightbulb),
+        CatalogDestination(backScreenViewModel.downloadResourcePackScreen, "Texturas", R.drawable.ic_format_paint_outlined),
+        CatalogDestination(backScreenViewModel.downloadSavesScreen, "Mapas", R.drawable.ic_public),
+        CatalogDestination(backScreenViewModel.downloadModPackScreen, "Modpacks", R.drawable.ic_package_2_outlined)
+    )
+    Column(modifier) {
+        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            entries.forEach { entry ->
+                val active = selectedKey == entry.key
+                Column(
+                    Modifier.semantics { selected = active }
+                        .clickable(role = Role.Tab) { backScreenViewModel.downloadScreen.backStack.navigateOnce(entry.key) },
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Row(Modifier.padding(horizontal = 10.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                        Icon(painterResource(entry.icon), null, Modifier.size(20.dp), tint = if (active) Color.White else DownloadCatalogColors.secondary)
+                        Text(entry.label, color = if (active) Color.White else DownloadCatalogColors.secondary, fontSize = 13.sp, fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal)
+                    }
+                    Spacer(Modifier.height(2.dp))
+                    // A fixed underline occupies the tab width without an infinite Row constraint.
+                    if (active) {
+                        Box(Modifier.width(68.dp).height(1.dp).downloadCatalogGlow(1.dp).background(Color.White))
+                    } else {
+                        Spacer(Modifier.height(1.dp))
+                    }
+                }
+            }
+        }
+        HorizontalDivider(color = Color.White.copy(alpha = 0.14f), thickness = 0.5.dp)
+    }
+}
+
+@Composable
+private fun CatalogSidebar(
+    compact: Boolean,
+    iconsOnly: Boolean,
+    currentCategory: TitledNavKey?,
+    backScreenViewModel: ScreenBackStackViewModel,
+    modifier: Modifier = Modifier
+) {
+    fun navigateMain(target: TitledNavKey) {
+        backScreenViewModel.mainScreen.removeAndNavigateTo(
+            removes = backScreenViewModel.clearBeforeNavKeys,
+            screenKey = target
+        )
+    }
+    Column(
+        modifier.background(DownloadCatalogColors.sidebar).verticalScroll(rememberScrollState()).padding(horizontal = 8.dp, vertical = if (compact) 10.dp else 20.dp),
+        verticalArrangement = Arrangement.spacedBy(if (compact) 3.dp else 8.dp)
+    ) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Icon(painterResource(R.drawable.ic_package_2_outlined), contentDescription = "Zalith Launcher 2", modifier = Modifier.size(30.dp), tint = Color.White)
+            if (!iconsOnly) {
+                Column {
+                    Text("Zalith", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 23.sp)
+                    Text("Launcher 2", color = DownloadCatalogColors.text, fontSize = 12.sp)
+                }
+            }
+        }
+        Spacer(Modifier.height(if (compact) 2.dp else 12.dp))
+        SidebarItem("Início", R.drawable.ic_home_filled, iconsOnly) { backScreenViewModel.mainScreen.clearWith(NormalNavKey.LauncherMain) }
+        SidebarItem("Instâncias", R.drawable.ic_folder_outlined, iconsOnly) { navigateMain(NormalNavKey.VersionsManager) }
+        SidebarItem("Contas", R.drawable.ic_person_outlined, iconsOnly) { navigateMain(NormalNavKey.AccountManager()) }
+        SidebarItem("Download", R.drawable.ic_download_2_outlined, iconsOnly, currentCategory != backScreenViewModel.downloadFavoritesScreen) {
+            backScreenViewModel.downloadScreen.backStack.navigateOnce(backScreenViewModel.downloadModScreen)
+        }
+        SidebarItem("Favoritos", R.drawable.ic_favorite_outlined, iconsOnly, currentCategory == backScreenViewModel.downloadFavoritesScreen) {
+            backScreenViewModel.downloadScreen.backStack.navigateOnce(backScreenViewModel.downloadFavoritesScreen)
+        }
+        SidebarItem("Configurações", R.drawable.ic_settings_filled, iconsOnly) { navigateMain(backScreenViewModel.settingsScreen) }
+        HorizontalDivider(Modifier.padding(vertical = 8.dp, horizontal = 8.dp), color = Color.White.copy(alpha = 0.12f), thickness = 0.5.dp)
+        SidebarItem("Jogo", R.drawable.ic_sports_esports_outlined, iconsOnly, currentCategory == backScreenViewModel.downloadGameScreen) {
+            backScreenViewModel.downloadScreen.backStack.navigateOnce(backScreenViewModel.downloadGameScreen)
+        }
+        SidebarItem("Buscar por ID", R.drawable.ic_search, iconsOnly, currentCategory == NormalNavKey.SearchId) {
+            backScreenViewModel.downloadScreen.backStack.navigateOnce(NormalNavKey.SearchId)
         }
     }
 }
 
 @Composable
-private fun TabMenu(
-    modifier: Modifier = Modifier,
-    isVisible: Boolean,
-    backStack: NavBackStack<TitledNavKey>,
-    backScreenViewModel: ScreenBackStackViewModel,
-) {
-    val downloadsList = listOf(
-        CategoryItem(backScreenViewModel.downloadGameScreen, { CategoryIcon(R.drawable.ic_sports_esports_outlined, R.string.download_category_game) }, R.string.download_category_game),
-        CategoryItem(backScreenViewModel.downloadModPackScreen, { CategoryIcon(R.drawable.ic_package_2_outlined, R.string.download_category_modpack) }, R.string.download_category_modpack),
-        CategoryItem(backScreenViewModel.downloadModScreen, { CategoryIcon(R.drawable.ic_extension_outlined, R.string.download_category_mod) }, R.string.download_category_mod, division = true),
-        CategoryItem(backScreenViewModel.downloadResourcePackScreen, { CategoryIcon(R.drawable.ic_format_paint_outlined, R.string.download_category_resource_pack) }, R.string.download_category_resource_pack),
-        CategoryItem(backScreenViewModel.downloadSavesScreen, { CategoryIcon(R.drawable.ic_public, R.string.download_category_saves) }, R.string.download_category_saves),
-        CategoryItem(backScreenViewModel.downloadShadersScreen, { CategoryIcon(R.drawable.ic_lightbulb, R.string.download_category_shaders) }, R.string.download_category_shaders),
-        CategoryItem(NormalNavKey.SearchId, { CategoryIcon(R.drawable.ic_card, R.string.download_category_by_id) }, R.string.download_category_by_id, division = true),
-        CategoryItem(backScreenViewModel.downloadFavoritesScreen, { CategoryIcon(R.drawable.ic_favorite_outlined, R.string.download_category_favorites) }, R.string.download_category_favorites),
-    )
-
-    val xOffset by swapAnimateDpAsState(
-        targetValue = (-40).dp,
-        swapIn = isVisible,
-        isHorizontal = true
-    )
-
-    val scrollState = rememberScrollState()
+private fun SidebarItem(label: String, icon: Int, iconsOnly: Boolean, active: Boolean = false, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(10.dp)
     Row(
-        modifier = modifier
-            .offset { IntOffset(x = xOffset.roundToPx(), y = 0) }
+        Modifier.fillMaxWidth().heightIn(min = 44.dp)
+            .then(if (active) Modifier.downloadCatalogGlow(10.dp, 0.35f) else Modifier)
+            .clip(shape).background(if (active) DownloadCatalogColors.selected else Color.Transparent)
+            .semantics { selected = active }
+            .clickable(role = Role.Button, onClickLabel = label, onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxHeight()
-                .width(148.dp)
-                .clip(RoundedCornerShape(topEnd = 18.dp, bottomEnd = 18.dp))
-                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.96f))
-                .border(
-                    1.dp,
-                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f),
-                    RoundedCornerShape(topEnd = 18.dp, bottomEnd = 18.dp)
-                )
-                .fadeEdge(scrollState)
-                .padding(horizontal = 8.dp)
-                .verticalScroll(scrollState),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Spacer(modifier = Modifier.height(12.dp))
-
-            downloadsList.forEach { item ->
-                if (item.division) {
-                    HorizontalDivider(
-                        modifier = Modifier
-                            .padding(horizontal = 10.dp, vertical = 10.dp)
-                            .fillMaxWidth()
-                            .alpha(0.45f),
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.32f)
-                    )
-                }
-
-                val selected =
-                    backScreenViewModel.downloadScreen.currentKey == item.key
-                val itemShape = RoundedCornerShape(14.dp)
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(itemShape)
-                        .background(
-                            if (selected)
-                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.70f)
-                            else Color.Transparent
-                        )
-                        .border(
-                            width = if (selected) 1.5.dp else 1.dp,
-                            color = if (selected)
-                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.42f)
-                            else
-                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
-                            shape = itemShape
-                        )
-                ) {
-                    NavigationRailItem(
-                        modifier = Modifier.fillMaxWidth(),
-                        selected = selected,
-                        onClick = { backStack.navigateOnce(item.key) },
-                        icon = { item.icon() },
-                        label = {
-                            Text(
-                                modifier = Modifier.basicMarquee(
-                                    iterations = Int.MAX_VALUE
-                                ),
-                                text = stringResource(item.textRes),
-                                maxLines = 1,
-                                style = MaterialTheme.typography.labelMedium
-                            )
-                        }
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-            }
+        Icon(painterResource(icon), contentDescription = if (iconsOnly) label else null, modifier = Modifier.size(22.dp), tint = if (active) Color.White else DownloadCatalogColors.secondary)
+        if (!iconsOnly) {
+            Text(label, color = if (active) Color.White else DownloadCatalogColors.secondary, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal)
         }
-
-        // Separador discreto entre o menu lateral e o conteúdo.
-        Box(
-            modifier = Modifier
-                .fillMaxHeight()
-                .width(1.dp)
-                .background(
-                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.20f)
-                )
-        )
     }
 }
 
