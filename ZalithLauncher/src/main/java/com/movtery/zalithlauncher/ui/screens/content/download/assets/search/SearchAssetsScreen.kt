@@ -19,16 +19,17 @@
 package com.movtery.zalithlauncher.ui.screens.content.download.assets.search
 
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -295,12 +296,65 @@ fun SearchAssetsScreen(
         Triple(parentScreenKey, parentCurrentKey, false),
         Triple(screenKey, currentKey, false)
     ) { isVisible ->
-        Row {
+        Column(Modifier.fillMaxHeight()) {
+            val searchedMcMods by viewModel.searchedMcMods.collectAsStateWithLifecycle()
+            val searchedVersions by viewModel.searchedVersions.collectAsStateWithLifecycle()
+            SearchFilter(
+                modifier = Modifier
+                    .fillMaxWidth(),
+                contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 8.dp, bottom = 8.dp),
+                enablePlatform = enablePlatform,
+                searchPlatform = viewModel.searchPlatform,
+                onPlatformChange = {
+                    viewModel.searchPlatform = it
+                    viewModel.researchWithFilter(
+                        viewModel.searchFilter.copy(categories = emptyList(), modloader = null)
+                    )
+                    onPlatformChange(it)
+                },
+                searchName = viewModel.searchFilter.searchName,
+                onSearchNameChange = {
+                    viewModel.updateNameFilter(it)
+                },
+                onSearch = {
+                    viewModel.resetSearch()
+                },
+                searchedMcMods = searchedMcMods,
+                searchedVersions = searchedVersions,
+                gameVersion = viewModel.searchFilter.gameVersion,
+                onGameVersionChange = {
+                    viewModel.updateVersionFilter(it)
+                },
+                sortField = viewModel.searchFilter.sortField,
+                onSortFieldChange = {
+                    viewModel.researchWithFilter(
+                        viewModel.searchFilter.copy(sortField = it)
+                    )
+                },
+                allCategories = categories,
+                categories = viewModel.searchFilter.categories,
+                onCategoryChanged = { categories ->
+                    viewModel.researchWithFilter(
+                        viewModel.searchFilter.copy(categories = categories)
+                    )
+                },
+                enableModLoader = enableModLoader,
+                modloaders = modloaders,
+                modloader = viewModel.searchFilter.modloader,
+                onModLoaderChange = {
+                    viewModel.researchWithFilter(
+                        viewModel.searchFilter.copy(modloader = it)
+                    )
+                },
+                extraFilter = extraFilter,
+                platformClasses = platformClasses
+            )
+
             val yOffset by swapAnimateDpAsState(targetValue = (-40).dp, swapIn = isVisible)
             ResultListLayout(
                 modifier = Modifier
-                    .fillMaxHeight()
-                    .weight(7f)
+                    .fillMaxWidth()
+                    .weight(1f)
                     .offset { IntOffset(x = 0, y = yOffset.roundToPx()) },
                 classes = platformClasses,
                 searchState = viewModel.searchResult,
@@ -356,64 +410,7 @@ fun SearchAssetsScreen(
                 }
             )
 
-            val xOffset by swapAnimateDpAsState(
-                targetValue = 40.dp,
-                swapIn = isVisible,
-                isHorizontal = true
-            )
-            val searchedMcMods by viewModel.searchedMcMods.collectAsStateWithLifecycle()
-            val searchedVersions by viewModel.searchedVersions.collectAsStateWithLifecycle()
-            SearchFilter(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .weight(3f)
-                    .offset { IntOffset(x = xOffset.roundToPx(), y = 0) },
-                contentPadding = PaddingValues(top = 12.dp, bottom = 12.dp, end = 12.dp),
-                enablePlatform = enablePlatform,
-                searchPlatform = viewModel.searchPlatform,
-                onPlatformChange = {
-                    viewModel.searchPlatform = it
-                    viewModel.researchWithFilter(
-                        viewModel.searchFilter.copy(categories = emptyList(), modloader = null)
-                    )
-                    onPlatformChange(it)
-                },
-                searchName = viewModel.searchFilter.searchName,
-                onSearchNameChange = {
-                    viewModel.updateNameFilter(it)
-                },
-                onSearch = {
-                    viewModel.resetSearch()
-                },
-                searchedMcMods = searchedMcMods,
-                searchedVersions = searchedVersions,
-                gameVersion = viewModel.searchFilter.gameVersion,
-                onGameVersionChange = {
-                    viewModel.updateVersionFilter(it)
-                },
-                sortField = viewModel.searchFilter.sortField,
-                onSortFieldChange = {
-                    viewModel.researchWithFilter(
-                        viewModel.searchFilter.copy(sortField = it)
-                    )
-                },
-                allCategories = categories,
-                categories = viewModel.searchFilter.categories,
-                onCategoryChanged = { categories ->
-                    viewModel.researchWithFilter(
-                        viewModel.searchFilter.copy(categories = categories)
-                    )
-                },
-                enableModLoader = enableModLoader,
-                modloaders = modloaders,
-                modloader = viewModel.searchFilter.modloader,
-                onModLoaderChange = {
-                    viewModel.researchWithFilter(
-                        viewModel.searchFilter.copy(modloader = it)
-                    )
-                },
-                extraFilter = extraFilter
-            )
+
         }
     }
 }
